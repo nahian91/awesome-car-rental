@@ -87,7 +87,7 @@ echo wp_kses_post( $acrb_msg );
                     <td style="padding: 15px 0; font-weight: 700; color: #000; font-size: 18px;"><?php esc_html_e('Total Amount', 'awesome-car-rental'); ?></td>
                     <td style="padding: 15px 0; text-align: right; font-weight: 900; color: #2563eb; font-size: 22px;">
                         <?php 
-echo esc_html( $currency ) . esc_html( number_format( floatval( $total ), 2 ) ); 
+echo '$' . esc_html( number_format( floatval( $total ), 2 ) ); 
 ?>
                     </td>
                 </tr>
@@ -110,4 +110,4 @@ echo esc_html( $currency ) . esc_html( number_format( floatval( $total ), 2 ) );
     <?php
     return ob_get_clean();
 }
-add_shortcode('acrb_thanks', 'acrb_thank_you_page_shortcode');
+add_shortcode('acrb_thank_you', 'acrb_thank_you_page_shortcode');

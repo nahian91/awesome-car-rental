@@ -21,7 +21,7 @@ add_shortcode('acrb_account', function() {
     $user_id = $user->ID;
     
     // 2. DYNAMIC SETTINGS
-    $currency_symbol = get_option('acrb_currency', '£');
+    $currency_symbol = get_option('acrb_currency', '$');
     $currency_pos    = get_option('acrb_currency_pos', 'left');
     $update_msg      = '';
 

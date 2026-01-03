@@ -112,7 +112,7 @@ add_shortcode('acrb_all_cars', function() {
 
                         <div class="acrb-card-footer">
                             <div class="acrb-price-wrap">
-                                <span class="acrb-price-val"><?php echo esc_html($currency . $price); ?></span>
+                                <span class="acrb-price-val">$<?php echo esc_html( $price); ?></span>
                                 <span class="acrb-price-label">/day</span>
                             </div>
                             <a href="<?php echo esc_url($details_link); ?>" class="acrb-btn-book"><?php esc_html_e('Rent Now', 'awesome-car-rental'); ?></a>

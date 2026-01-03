@@ -35,6 +35,12 @@ function acrb_shortcode_tab() {
                 'desc'  => 'Displays order summary after a successful booking.',
                 'page'  => 'Thank You'
             ],
+            [
+                'title' => 'Car Grid View',
+                'code'  => '[acrb_car_grid limit="6" orderby="rand"]',
+                'desc'  => 'Shows cars in a 3-column grid. Supports limit and orderby (date, rand, title).',
+                'page'  => 'Home / Landing Page'
+            ],
         ],
         'User & Auth' => [
             [

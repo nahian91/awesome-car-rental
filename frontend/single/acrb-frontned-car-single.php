@@ -191,7 +191,7 @@ function acrb_car_details_page_shortcode() {
             <div class="acrb-sidebar-right" style="width: 400px; min-width: 320px;">
                 <div class="acrb-booking-card">
                     <div class="acrb-price-hero">
-                        <span style="font-size:36px; font-weight:900; color: #000;"><?php echo esc_html($currency . $price); ?></span>
+                        <span style="font-size:36px; font-weight:900; color: #000;">$<?php echo esc_html($price); ?></span>
                         <span style="color: #888; font-size: 14px;">/ per day</span>
                     </div>
 
@@ -251,7 +251,7 @@ function acrb_car_details_page_shortcode() {
 
                         <div class="acrb-total-box">
                             <span style="font-weight:700;">Estimated Total</span>
-                            <span style="font-size:22px; font-weight:900;"><?php echo esc_html($currency); ?><span id="acrb_sum_total">0.00</span></span>
+                            <span style="font-size:22px; font-weight:900;">$<span id="acrb_sum_total">0.00</span></span>
                         </div>
 
                         <button type="submit" class="acrb-submit-btn">Reserve This Vehicle</button>
