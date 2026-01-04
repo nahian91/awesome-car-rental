@@ -77,7 +77,7 @@ add_shortcode( 'acrb_register', function() {
     
     <style>
         .acrb-reg-container { max-width: 900px; margin: 40px auto; display: flex; background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.08); border: 1px solid #f0f0f0; }
-        .acrb-reg-info { flex: 1; background: #2563eb; padding: 50px; color: #fff; display: flex; flex-direction: column; justify-content: center; }
+        .acrb-reg-info { flex: 1; background: #4f46e5; padding: 50px; color: #fff; display: flex; flex-direction: column; justify-content: center; }
         .acrb-reg-card { flex: 1.5; padding: 50px; background: #fff; }
         .acrb-reg-info h2 { color: #fff; font-size: 32px; margin-bottom: 20px; font-weight: 800; }
         .acrb-reg-info p { color: rgba(255,255,255,0.8); line-height: 1.6; }
@@ -90,11 +90,11 @@ add_shortcode( 'acrb_register', function() {
         .acrb-reg-full { grid-column: span 2; }
         .acrb-reg-field label { display: block; font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 8px; }
         .acrb-reg-field input, .acrb-reg-field textarea { width: 100%; padding: 12px 15px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 14px; transition: 0.2s; }
-        .acrb-reg-field input:focus { border-color: #2563eb; outline: none; box-shadow: 0 0 0 4px rgba(37,99,235,0.1); }
-        .acrb-reg-btn { width: 100%; background: #2563eb; color: #fff; border: none; padding: 15px; border-radius: 10px; font-weight: 700; font-size: 16px; cursor: pointer; margin-top: 25px; transition: 0.3s; }
+        .acrb-reg-field input:focus { border-color: #4f46e5; outline: none; box-shadow: 0 0 0 4px rgba(37,99,235,0.1); }
+        .acrb-reg-btn { width: 100%; background: #4f46e5; color: #fff; border: none; padding: 15px; border-radius: 10px; font-weight: 700; font-size: 16px; cursor: pointer; margin-top: 25px; transition: 0.3s; }
         .acrb-reg-btn:hover { background: #1d4ed8; transform: translateY(-2px); box-shadow: 0 10px 20px rgba(37,99,235,0.2); }
         .acrb-reg-footer { text-align: center; margin-top: 20px; font-size: 14px; color: #64748b; }
-        .acrb-reg-footer a { color: #2563eb; font-weight: 700; text-decoration: none; }
+        .acrb-reg-footer a { color: #4f46e5; font-weight: 700; text-decoration: none; }
         .acrb-reg-alert { margin-top: 15px; padding: 12px; border-radius: 8px; display: none; font-size: 14px; text-align: center; }
         .alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; display: block; }
         .alert-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; display: block; }

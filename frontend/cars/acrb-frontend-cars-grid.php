@@ -53,18 +53,18 @@ add_shortcode('acrb_car_grid', function($atts) {
         .acrb-img-container { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: #f9f9f9; }
         .acrb-img-container img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
         .acrb-card:hover .acrb-img-container img { transform: scale(1.08); }
-        .acrb-badge { position: absolute; top: 12px; left: 12px; background: #0073aa; color: #fff; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; z-index: 2; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .acrb-badge { position: absolute; top: 12px; left: 12px; background: #4f46e5; color: #fff; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; z-index: 2; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
         /* Body Content */
         .acrb-card-body { padding: 20px; flex-grow: 1; display: flex; flex-direction: column; }
         .acrb-card-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; line-height: 1.3; }
         .acrb-card-title a { text-decoration: none; color: #1a1a1a; transition: color 0.2s; }
-        .acrb-card-title a:hover { color: #0073aa; }
+        .acrb-card-title a:hover { color: #4f46e5; }
         
         /* Features/Specs */
-        .acrb-spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; padding-top: 15px; border-top: 1px solid #f0f0f0; }
-        .acrb-spec-item { display: flex; align-items: center; gap: 6px; color: #555; font-size: 13.5px; }
-        .acrb-spec-item .dashicons { font-size: 17px; width: 17px; height: 17px; color: #999; }
+        .acrb-spec-grid {margin-bottom: 20px; padding-top: 15px; border-top: 1px solid #f0f0f0; }
+        .acrb-spec-item { display: flex; align-items: center; gap: 6px; color: #111; font-size: 16px;margin-bottom: 15px; }
+        .acrb-spec-item .dashicons { font-size: 17px; width: 17px; height: 17px; color: #111; }
         
         /* Footer/Price */
         .acrb-card-footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 15px; border-top: 1px solid #f0f0f0; }
@@ -72,7 +72,7 @@ add_shortcode('acrb_car_grid', function($atts) {
         .acrb-price-label { font-size: 0.85rem; color: #777; font-weight: 400; }
         
         .acrb-btn-book { background: #1a1a1a; color: #fff !important; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px; transition: background 0.2s; text-align: center; }
-        .acrb-btn-book:hover { background: #0073aa; text-decoration: none; }
+        .acrb-btn-book:hover { background: #4f46e5; text-decoration: none; }
 
         .acrb-no-thumb { height: 100%; display: flex; align-items: center; justify-content: center; color: #ddd; }
         .acrb-no-thumb .dashicons { font-size: 48px; width: 48px; height: 48px; }

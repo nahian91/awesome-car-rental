@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Awesome Car Rental & Booking
  * Description: Core functionality for the Car Rental System (CPTs, Admin UI, and Logic).
- * Version: 1.1.1
+ * Version: 1.1.2
  * Author: Abdullah Nahian
  * Author URI: https://devnahian.com
  * Text Domain: awesome-car-rental
@@ -12,6 +12,41 @@
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly
+}
+
+if ( ! function_exists( 'acr_fs' ) ) {
+    // Create a helper function for easy SDK access.
+    function acr_fs() {
+        global $acr_fs;
+
+        if ( ! isset( $acr_fs ) ) {
+            // Include Freemius SDK.
+            require_once dirname( __FILE__ ) . '/freemius/start.php';
+
+            $acr_fs = fs_dynamic_init( array(
+                'id'                  => '22722',
+                'slug'                => 'awesome-car-rental',
+                'type'                => 'plugin',
+                'public_key'          => 'pk_5a6eaaad70dbae007650ce2670b2f',
+                'is_premium'          => false,
+                'has_addons'          => false,
+                'has_paid_plans'      => false,
+                'menu'                => array(
+                    'slug'           => 'awesome_car_rental',
+                    'account'        => false,
+                    'contact'        => false,
+                    'support'        => false,
+                ),
+            ) );
+        }
+
+        return $acr_fs;
+    }
+
+    // Init Freemius.
+    acr_fs();
+    // Signal that SDK was initiated.
+    do_action( 'acr_fs_loaded' );
 }
 
 /**

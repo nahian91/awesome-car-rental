@@ -49,7 +49,17 @@ add_shortcode('acrb_account', function() {
                 $update_msg = '<div class="acrb-alert error">⚠ ' . esc_html__( 'Passwords do not match.', 'awesome-car-rental' ) . '</div>';
             }
         } else {
-            $update_msg = '<div class="acrb-alert success">✓ ' . esc_html__( 'Profile updated successfully.', 'awesome-car-rental' ) . '</div>';
+           $update_msg = '<div class="acrb-alert success">✓ ' . esc_attr__( 'Profile updated successfully.', 'awesome-car-rental' ) . '</div>';
+
+// Define what HTML is allowed
+$allowed_html = array(
+    'div' => array(
+        'class' => array(),
+    ),
+);
+
+// Output the sanitized string
+echo wp_kses( $update_msg, $allowed_html );
         }
     }
 
@@ -132,7 +142,7 @@ add_shortcode('acrb_account', function() {
                         <h3><?php esc_html_e('Ready for your next journey?', 'awesome-car-rental'); ?></h3>
                         <p><?php esc_html_e('Explore our luxury fleet and book with your member discount.', 'awesome-car-rental'); ?></p>
                     </div>
-                    <a href="<?php echo esc_url(home_url('/fleet')); ?>" class="acrb-btn-white"><?php esc_html_e('Book Now', 'awesome-car-rental'); ?></a>
+                    <a href="<?php echo esc_url(home_url('/acrb-cars')); ?>" class="acrb-btn-white"><?php esc_html_e('Book Now', 'awesome-car-rental'); ?></a>
                 </div>
             </div>
 
@@ -274,7 +284,7 @@ add_shortcode('acrb_account', function() {
 
         #acrb-nav-list { list-style: none; padding: 0; margin: 0; }
         #acrb-nav-list li a { display: flex; align-items: center; gap: 10px; padding: 12px; text-decoration: none; color: #555; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-        #acrb-nav-list li.active a { background: #f0f7ff; color: #2563eb; font-weight: 600; }
+        #acrb-nav-list li.active a { background: #f0f7ff; color: #4f46e5; font-weight: 600; }
         #acrb-nav-list li a:hover:not(.active) { background: #f9fafb; }
 
         .acrb-acc-content { flex: 1; }
@@ -286,7 +296,7 @@ add_shortcode('acrb_account', function() {
         .acrb-booking-card { background: #fff; border: 1px solid #eee; border-radius: 12px; margin-bottom: 16px; transition: 0.2s; }
         .acrb-booking-card:hover { border-color: #3b82f6; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .acrb-card-main { display: flex; gap: 15px; padding: 15px; align-items: center; }
-        .acrb-car-icon { background: #f4f4f4; color: #2563eb; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+        .acrb-car-icon { background: #f4f4f4; color: #4f46e5; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
         .acrb-status-pill { font-size: 10px; padding: 3px 10px; border-radius: 20px; font-weight: 700; text-transform: uppercase; }
         .status-completed { background: #dcfce7; color: #166534; }
         .status-pending { background: #fef3c7; color: #92400e; }
@@ -297,7 +307,7 @@ add_shortcode('acrb_account', function() {
         .acrb-form-group { margin-bottom: 15px; }
         .acrb-form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
         .acrb-form-group input, .acrb-form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
-        .acrb-btn-submit { background: #2563eb; color: #fff; border: none; padding: 12px 20px; border-radius: 6px; font-weight: 700; cursor: pointer; width: 100%; }
+        .acrb-btn-submit { background: #4f46e5; color: #fff; border: none; padding: 12px 20px; border-radius: 6px; font-weight: 700; cursor: pointer; width: 100%; }
 
         .acrb-modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
         .acrb-modal-content { background: #fff; margin: 10% auto; padding: 30px; border-radius: 16px; width: 380px; position: relative; }

@@ -131,7 +131,7 @@ add_shortcode('acrb_all_cars', function() {
     </div>
 
     <style>
-        :root { --acrb-blue: #2563eb; --acrb-text: #1e293b; --acrb-bg: #f8fafc; }
+        :root { --acrb-blue: #4f46e5; --acrb-text: #1e293b; --acrb-bg: #f8fafc; }
         .acrb-main-wrapper { display: flex; gap: 30px; align-items: flex-start; max-width: 1200px; margin: 0 auto; font-family: sans-serif; }
         
         /* Sidebar Styles */

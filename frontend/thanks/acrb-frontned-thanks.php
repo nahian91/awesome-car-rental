@@ -15,7 +15,7 @@ function acrb_thank_you_page_shortcode() {
             '<div class="acrb-error-container" style="text-align:center; padding:50px;">
                 <h3>%s</h3>
                 <p>%s</p>
-                <a href="%s" class="acrb-btn-primary" style="display:inline-block; margin-top:15px; text-decoration:none; background:#2563eb; color:#fff; padding:10px 20px; border-radius:5px;">%s</a>
+                <a href="%s" class="acrb-btn-primary" style="display:inline-block; margin-top:15px; text-decoration:none; background:#4f46e5; color:#fff; padding:10px 20px; border-radius:5px;">%s</a>
             </div>',
             esc_html__('No Active Booking Found', 'awesome-car-rental'),
             esc_html__('It looks like you reached this page directly. Please book a car first.', 'awesome-car-rental'),
@@ -85,7 +85,7 @@ echo wp_kses_post( $acrb_msg );
                 </tr>
                 <tr style="border-top: 1px solid #eee;">
                     <td style="padding: 15px 0; font-weight: 700; color: #000; font-size: 18px;"><?php esc_html_e('Total Amount', 'awesome-car-rental'); ?></td>
-                    <td style="padding: 15px 0; text-align: right; font-weight: 900; color: #2563eb; font-size: 22px;">
+                    <td style="padding: 15px 0; text-align: right; font-weight: 900; color: #4f46e5; font-size: 22px;">
                         <?php 
 echo '$' . esc_html( number_format( floatval( $total ), 2 ) ); 
 ?>
@@ -103,11 +103,11 @@ echo '$' . esc_html( number_format( floatval( $total ), 2 ) );
             </button>
             <p style="margin-top: 25px; font-size: 13px; color: #999;">
                 <?php esc_html_e('Need help?', 'awesome-car-rental'); ?> 
-                <a href="mailto:<?php echo esc_attr(get_option('admin_email')); ?>" style="color: #2563eb; text-decoration: none;"><?php esc_html_e('Contact Support', 'awesome-car-rental'); ?></a>
+                <a href="mailto:<?php echo esc_attr(get_option('admin_email')); ?>" style="color: #4f46e5; text-decoration: none;"><?php esc_html_e('Contact Support', 'awesome-car-rental'); ?></a>
             </p>
         </div>
     </div>
     <?php
     return ob_get_clean();
 }
-add_shortcode('acrb_thank_you', 'acrb_thank_you_page_shortcode');
+add_shortcode('acrb_thanks', 'acrb_thank_you_page_shortcode');

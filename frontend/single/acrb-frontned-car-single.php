@@ -133,7 +133,7 @@ function acrb_car_details_page_shortcode() {
                         <div class="acrb-spec-wrap" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:15px;">
                             <?php foreach($features as $f): if(!empty($f['enabled'])): ?>
                             <div class="acrb-spec-node" style="padding:15px; background:#fafafa; border: 1px solid #f0f0f0; border-radius:12px;">
-                                <span class="dashicons <?php echo esc_attr($f['icon']); ?>" style="color: #2563eb; margin-bottom: 8px;"></span>
+                                <span class="dashicons <?php echo esc_attr($f['icon']); ?>" style="color: #4f46e5; margin-bottom: 8px;"></span>
                                 <div style="font-size:11px; color: #888; text-transform:uppercase;"><?php echo esc_html($f['name']); ?></div>
                                 <div style="font-weight:bold; color: #333; font-size: 15px;"><?php echo esc_html($f['value']); ?></div>
                             </div>
@@ -313,7 +313,7 @@ function acrb_car_details_page_shortcode() {
     <style>
         .acrb-tabs-nav { display: flex; gap: 20px; margin-top: 30px; border-bottom: 2px solid #eee; overflow-x: auto; }
         .acrb-tab-btn { background: none; border: none; padding: 15px 5px; font-weight: 700; font-size: 16px; color: #666; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.3s; white-space: nowrap; }
-        .acrb-tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; }
+        .acrb-tab-btn.active { color: #4f46e5; border-bottom-color: #4f46e5; }
         .acrb-tab-pane { display: none; padding: 20px 0; }
         .acrb-tab-pane.active { display: block; animation: acrbFade 0.4s; }
         @keyframes acrbFade { from { opacity:0; transform: translateY(5px); } to { opacity:1; transform: translateY(0); } }
@@ -331,9 +331,9 @@ function acrb_car_details_page_shortcode() {
         .acrb-readonly { width:100%; padding:10px; border:1px solid #eee; border-radius:8px; background:#f5f5f5; color:#777; cursor:not-allowed; }
         .acrb-input { width:100%; padding:12px; border:1px solid #ddd; border-radius:10px; }
         .acrb-pay-option { display:flex; align-items:center; margin-bottom:8px; cursor:pointer; padding: 12px; border: 1px solid #f0f0f0; border-radius: 10px; font-size: 14px; transition: 0.2s; }
-        .acrb-pay-option:hover { border-color: #2563eb; background: #f4f9ff; }
-        .acrb-total-box { padding:20px; background:#f4f9ff; border-radius:12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; color: #2563eb; }
-        .acrb-submit-btn { width:100%; padding:18px; background:#2563eb; color:#fff; border:none; border-radius:12px; font-weight:800; font-size: 16px; cursor:pointer; transition: 0.3s; }
+        .acrb-pay-option:hover { border-color: #4f46e5; background: #f4f9ff; }
+        .acrb-total-box { padding:20px; background:#f4f9ff; border-radius:12px; display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; color: #4f46e5; }
+        .acrb-submit-btn { width:100%; padding:18px; background:#4f46e5; color:#fff; border:none; border-radius:12px; font-weight:800; font-size: 16px; cursor:pointer; transition: 0.3s; }
         .acrb-submit-btn:hover { background: #1d4ed8; }
 
         @media (max-width: 900px) {

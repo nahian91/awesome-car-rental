@@ -64,15 +64,15 @@ add_shortcode('acrb_login', function() {
         .acrb-login-field { margin-bottom: 20px; }
         .acrb-login-field label { display: block; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px; }
         .acrb-login-field input { width: 100%; padding: 14px 16px; border: 1.5px solid #e2e8f0; border-radius: 12px; font-size: 15px; transition: 0.2s; background: #f8fafc; }
-        .acrb-login-field input:focus { background: #fff; border-color: #2563eb; outline: none; box-shadow: 0 0 0 4px rgba(37,99,235,0.1); }
-        .acrb-login-btn { width: 100%; background: #2563eb; color: #fff; border: none; padding: 16px; border-radius: 12px; font-weight: 700; font-size: 16px; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        .acrb-login-field input:focus { background: #fff; border-color: #4f46e5; outline: none; box-shadow: 0 0 0 4px rgba(37,99,235,0.1); }
+        .acrb-login-btn { width: 100%; background: #4f46e5; color: #fff; border: none; padding: 16px; border-radius: 12px; font-weight: 700; font-size: 16px; cursor: pointer; margin-top: 10px; transition: 0.3s; }
         .acrb-login-btn:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 10px 15px -3px rgba(37,99,235,0.3); }
         .acrb-login-btn:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
         .acrb-auth-footer { text-align: center; margin-top: 25px; font-size: 14px; color: #64748b; }
-        .acrb-auth-footer a { color: #2563eb; font-weight: 700; text-decoration: none; }
+        .acrb-auth-footer a { color: #4f46e5; font-weight: 700; text-decoration: none; }
         #acrb-login-status { margin-top: 20px; font-size: 14px; text-align: center; min-height: 24px; font-weight: 500; }
         .status-error { color: #dc2626; padding: 10px; background: #fef2f2; border-radius: 8px; }
-        .status-loading { color: #2563eb; }
+        .status-loading { color: #4f46e5; }
         .status-success { color: #16a34a; }
         @media (max-width: 768px) {
             .acrb-auth-page-wrapper { flex-direction: column; margin: 20px; }
@@ -106,7 +106,7 @@ add_shortcode('acrb_login', function() {
                 <div class="acrb-login-field">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <label style="margin-bottom: 0;"><?php esc_html_e( 'Password', 'awesome-car-rental' ); ?></label>
-                        <a href="<?php echo esc_url( wp_lostpassword_url() ); ?>" style="font-size: 12px; color: #2563eb; text-decoration: none;">
+                        <a href="<?php echo esc_url( wp_lostpassword_url() ); ?>" style="font-size: 12px; color: #4f46e5; text-decoration: none;">
                             <?php esc_html_e( 'Forgot?', 'awesome-car-rental' ); ?>
                         </a>
                     </div>
