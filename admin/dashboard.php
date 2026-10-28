@@ -1,643 +1,770 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
-
 /**
  * Dashboard Tab - Awesome Car Rental & Booking
- * Enterprise-grade SaaS Fleet Dashboard.
+ * Enterprise-grade SaaS Fleet Dashboard with 100% internal styling & live telemetry.
+ *
+ * @package Awesome_Car_Rental
+ * @since   1.5.2
  */
+
+declare( strict_types=1 );
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 function acrb_dashboard_tab() {
-    // 1. Settings & URLs
-    $currency_symbol = get_option( 'acrb_currency', '£' ); 
-    $currency_pos    = get_option( 'acrb_currency_pos', 'left' );
-    
-    $plugin_page     = 'awesome_car_rental';
-    $bookings_url    = admin_url( 'admin.php?page=' . esc_attr( $plugin_page ) . '&tab=bookings' );
-    $cars_url        = admin_url( 'admin.php?page=' . esc_attr( $plugin_page ) . '&tab=cars' );
-    $extras_url      = admin_url( 'admin.php?page=' . esc_attr( $plugin_page ) . '&tab=extras' );
-    $reports_url     = admin_url( 'admin.php?page=' . esc_attr( $plugin_page ) . '&tab=reports' );
+	global $wpdb;
 
-    // 2. Fetch Pending Bookings
-    $pending_list = get_posts( array(
-        'post_type'     => 'acrb_bookings', 
-        'numberposts'   => 5,
-        'post_status'   => 'publish',
-        'no_found_rows' => true,
-        'meta_query'    => array(
-            'relation' => 'OR',
-            array( array( 'key' => 'status', 'value' => 'pending', 'compare' => '=' ) ),
-            array( array( 'key' => 'status', 'compare' => 'NOT EXISTS' ) ) 
-        )
-    ) );
+	$table_cars     = $wpdb->prefix . 'dev_nahian_cars';
+	$table_bookings = $wpdb->prefix . 'dev_nahian_bookings';
 
-    // 3. Cached Gross Revenue Computation
-    $revenue_total = get_transient( 'acrb_dashboard_revenue' );
-    if ( false === $revenue_total ) {
-        $confirmed_ids = get_posts( array(
-            'post_type'     => 'acrb_bookings',
-            'numberposts'   => -1,
-            'fields'        => 'ids',
-            'no_found_rows' => true,
-            'meta_key'      => 'status',
-            'meta_value'    => 'confirmed'
-        ) );
-        
-        $revenue_total = 0;
-        foreach ( $confirmed_ids as $booking_id ) {
-            $raw_price     = get_post_meta( $booking_id, 'total_price', true );
-            $clean_price   = preg_replace( '/[^\d.]/', '', $raw_price );
-            $revenue_total += floatval( $clean_price );
-        }
-        set_transient( 'acrb_dashboard_revenue', $revenue_total, HOUR_IN_SECONDS );
-    }
+	// 1. Settings & URLs
+	$currency_symbol = get_option( 'acrb_currency', '$' ); 
+	$currency_pos    = get_option( 'acrb_currency_pos', 'left' );
+	
+	$plugin_page     = 'awesome_car_rental';
+	$bookings_url    = admin_url( 'admin.php?page=' . esc_attr( $plugin_page ) . '&tab=bookings' );
+	$cars_url        = admin_url( 'admin.php?page=' . esc_attr( $plugin_page ) . '&tab=cars' );
+	$calendar_url    = admin_url( 'admin.php?page=' . esc_attr( $plugin_page ) . '&tab=calendar' );
+	$maintenance_url = admin_url( 'admin.php?page=' . esc_attr( $plugin_page ) . '&tab=maintenance' );
 
-    $pending_count   = count( $pending_list );
-    $cars_count_obj  = wp_count_posts( 'acrb_cars' );
-    $total_cars      = isset( $cars_count_obj->publish ) ? (int) $cars_count_obj->publish : 0;
-    
-    // Quick Helper for Price Display
-    $format_price = function( $amount ) use ( $currency_symbol, $currency_pos ) {
-        $formatted_number = number_format_i18n( $amount, 2 );
-        return ( 'left' === $currency_pos ) 
-            ? $currency_symbol . $formatted_number 
-            : $formatted_number . $currency_symbol;
-    };
-    ?>
+	// 2. Fetch Fleet Counts & Status Breakdown from Custom Tables
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$total_cars = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table_cars}" );
 
-    <style>
-        .acrb-dash-shell {
-            max-width: 100%;
-            color: #0f172a;
-        }
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$available_cars = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table_cars} WHERE status = 'ready'" );
 
-        /* Hero Banner */
-        .acrb-hero-panel {
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%);
-            border-radius: 18px;
-            padding: 34px 38px;
-            color: #ffffff;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.4);
-            margin-bottom: 28px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$maintenance_cars = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table_cars} WHERE status = 'maintenance'" );
 
-        .acrb-hero-panel::after {
-            content: '';
-            position: absolute;
-            top: -100px;
-            right: -60px;
-            width: 320px;
-            height: 320px;
-            background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(99, 102, 241, 0) 70%);
-            border-radius: 50%;
-            pointer-events: none;
-        }
+	$rented_cars = max( 0, $total_cars - $available_cars - $maintenance_cars );
 
-        .acrb-hero-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 9999px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(8px);
-            font-size: 11.5px;
-            font-weight: 600;
-            color: #a5b4fc;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            margin-bottom: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-        }
+	// 3. Fetch Bookings Telemetry
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$total_bookings = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table_bookings}" );
 
-        .acrb-hero-heading {
-            font-size: 26px;
-            font-weight: 800;
-            margin: 0 0 8px 0;
-            letter-spacing: -0.03em;
-            color: #ffffff;
-            line-height: 1.2;
-        }
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$pending_bookings = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table_bookings} WHERE booking_status = 'pending'" );
 
-        .acrb-hero-lead {
-            font-size: 14px;
-            color: #cbd5e1;
-            margin: 0;
-            line-height: 1.5;
-            max-width: 620px;
-        }
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$today_pickups = (int) $wpdb->get_var( 
+		$wpdb->prepare( "SELECT COUNT(*) FROM {$table_bookings} WHERE pickup_date = %s AND booking_status != 'cancelled'", gmdate( 'Y-m-d' ) ) 
+	);
 
-        .acrb-hero-actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            position: relative;
-            z-index: 1;
-        }
+	// 4. Computed Gross Revenue
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$revenue_total = (float) $wpdb->get_var( "SELECT SUM(total_amount) FROM {$table_bookings} WHERE booking_status = 'confirmed'" );
 
-        .acrb-btn-glass {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            color: #ffffff !important;
-            padding: 10px 18px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 13.5px;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.2s ease;
-            backdrop-filter: blur(6px);
-        }
+	// 5. Fetch Recent Bookings Feed
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+	$recent_bookings = $wpdb->get_results( 
+		"SELECT * FROM {$table_bookings} ORDER BY id DESC LIMIT 6", 
+		ARRAY_A 
+	);
 
-        .acrb-btn-glass:hover {
-            background: rgba(255, 255, 255, 0.16);
-            transform: translateY(-1px);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
+	// Quick Helper for Price Display
+	$format_price = function( $amount ) use ( $currency_symbol, $currency_pos ) {
+		$formatted_number = number_format_i18n( (float) $amount, 2 );
+		return ( 'left' === $currency_pos ) 
+			? $currency_symbol . $formatted_number 
+			: $formatted_number . $currency_symbol;
+	};
 
-        .acrb-btn-accent {
-            background: #4f46e5;
-            border: 1px solid #6366f1;
-            color: #ffffff !important;
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 13.5px;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
-        }
+	$utilization_rate = $total_cars > 0 ? round( ( $rented_cars / $total_cars ) * 100 ) : 0;
+	$avg_yield = $format_price( $total_bookings > 0 ? $revenue_total / max( 1, $total_bookings ) : 0 );
+	?>
 
-        .acrb-btn-accent:hover {
-            background: #4338ca;
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
-        }
+	<style>
+		.acrb-dash-shell {
+			max-width: 100%;
+			color: #0f172a;
+			font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+			box-sizing: border-box;
+		}
 
-        /* Metric KPI Grid */
-        .acrb-kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-bottom: 28px;
-        }
+		.acrb-dash-shell *, .acrb-dash-shell *:before, .acrb-dash-shell *:after {
+			box-sizing: border-box;
+		}
 
-        .acrb-kpi-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 22px 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 6px -1px rgba(15, 23, 42, 0.04);
-            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-        }
+		/* Top Telemetry Live Bar */
+		.acrb-telemetry-bar {
+			background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+			border-radius: 16px;
+			padding: 20px 28px;
+			color: #ffffff;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 24px;
+			box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.3);
+			border: 1px solid rgba(255, 255, 255, 0.08);
+		}
 
-        .acrb-kpi-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 24px -4px rgba(15, 23, 42, 0.06);
-            border-color: #cbd5e1;
-        }
+		.acrb-telemetry-title h2 {
+			font-family: 'Plus Jakarta Sans', sans-serif;
+			font-size: 20px;
+			font-weight: 800;
+			margin: 0 0 4px 0;
+			color: #ffffff;
+			letter-spacing: -0.02em;
+		}
 
-        .acrb-kpi-label {
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: #64748b;
-            margin-bottom: 6px;
-            display: block;
-        }
+		.acrb-telemetry-title p {
+			margin: 0;
+			font-size: 13px;
+			color: #94a3b8;
+		}
 
-        .acrb-kpi-val {
-            font-size: 28px;
-            font-weight: 800;
-            color: #0f172a;
-            margin: 0;
-            letter-spacing: -0.03em;
-            line-height: 1.1;
-        }
+		.acrb-telemetry-pills {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
 
-        .acrb-kpi-sub {
-            font-size: 12px;
-            color: #94a3b8;
-            margin-top: 6px;
-            display: block;
-            font-weight: 500;
-        }
+		.acrb-badge-live {
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			background: rgba(16, 185, 129, 0.15);
+			border: 1px solid rgba(16, 185, 129, 0.3);
+			color: #34d399;
+			padding: 6px 14px;
+			border-radius: 9999px;
+			font-size: 12px;
+			font-weight: 700;
+		}
 
-        .acrb-kpi-icon {
-            width: 52px;
-            height: 52px;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
+		.acrb-pulse-dot {
+			width: 8px;
+			height: 8px;
+			background: #34d399;
+			border-radius: 50%;
+			box-shadow: 0 0 10px #34d399;
+			animation: acrbPulse 2s infinite;
+		}
 
-        .acrb-kpi-icon .dashicons {
-            font-size: 24px;
-            width: 24px;
-            height: 24px;
-        }
+		@keyframes acrbPulse {
+			0% { transform: scale(0.95); opacity: 0.8; }
+			50% { transform: scale(1.2); opacity: 1; }
+			100% { transform: scale(0.95); opacity: 0.8; }
+		}
 
-        .kpi-indigo { background: #eef2ff; color: #4f46e5; }
-        .kpi-amber  { background: #fffbeb; color: #d97706; }
-        .kpi-emerald{ background: #ecfdf5; color: #059669; }
+		.acrb-clock-pill {
+			background: rgba(255, 255, 255, 0.08);
+			border: 1px solid rgba(255, 255, 255, 0.12);
+			padding: 6px 14px;
+			border-radius: 8px;
+			font-size: 12.5px;
+			font-weight: 600;
+		}
 
-        /* Quick Action Shortcut Strip */
-        .acrb-shortcuts-strip {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 14px;
-            margin-bottom: 28px;
-        }
+		.acrb-icon-middle {
+			font-size: 15px;
+			width: 15px;
+			height: 15px;
+			vertical-align: middle;
+		}
 
-        .acrb-shortcut-btn {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 14px 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: #334155;
-            text-decoration: none;
-            font-size: 13.5px;
-            font-weight: 600;
-            transition: all 0.15s ease;
-        }
+		.acrb-refresh-btn {
+			background: rgba(255, 255, 255, 0.08);
+			border: 1px solid rgba(255, 255, 255, 0.15);
+			color: #ffffff;
+			padding: 7px 14px;
+			border-radius: 8px;
+			font-size: 12.5px;
+			font-weight: 600;
+			cursor: pointer;
+			display: inline-flex;
+			align-items: center;
+			gap: 6px;
+			text-decoration: none;
+			transition: background 0.2s;
+		}
 
-        .acrb-shortcut-btn:hover {
-            border-color: #4f46e5;
-            color: #4f46e5;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.08);
-        }
+		.acrb-refresh-btn:hover {
+			background: rgba(255, 255, 255, 0.15);
+			color: #ffffff;
+		}
 
-        .acrb-shortcut-btn .dashicons {
-            font-size: 18px;
-            width: 18px;
-            height: 18px;
-            color: #64748b;
-        }
+		/* Quick Action Shortcut Strip */
+		.acrb-shortcuts-strip {
+			display: grid;
+			grid-template-columns: repeat(4, 1fr);
+			gap: 16px;
+			margin-bottom: 24px;
+		}
 
-        .acrb-shortcut-btn:hover .dashicons {
-            color: #4f46e5;
-        }
+		.acrb-shortcut-card {
+			background: #ffffff;
+			border: 1px solid #e2e8f0;
+			border-radius: 14px;
+			padding: 16px 20px;
+			display: flex;
+			align-items: center;
+			gap: 14px;
+			text-decoration: none;
+			color: #0f172a;
+			box-shadow: 0 2px 4px rgba(15, 23, 42, 0.02);
+			transition: all 0.2s ease;
+		}
 
-        /* Main Workspace Content Card */
-        .acrb-panel {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 24px 26px;
-            box-shadow: 0 2px 6px -1px rgba(15, 23, 42, 0.04);
-        }
+		.acrb-shortcut-card:hover {
+			border-color: #4f46e5;
+			transform: translateY(-2px);
+			box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.1);
+		}
 
-        .acrb-panel-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 18px;
-            border-bottom: 1px solid #f1f5f9;
-            margin-bottom: 20px;
-        }
+		.acrb-shortcut-icon {
+			width: 42px;
+			height: 42px;
+			border-radius: 10px;
+			background: #eef2ff;
+			color: #4f46e5;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			flex-shrink: 0;
+		}
 
-        .acrb-panel-head h3 {
-            font-size: 16px;
-            font-weight: 700;
-            margin: 0;
-            color: #0f172a;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+		.acrb-shortcut-icon .dashicons {
+			font-size: 20px;
+			width: 20px;
+			height: 20px;
+		}
 
-        .acrb-panel-head h3 .dashicons {
-            color: #4f46e5;
-            font-size: 20px;
-            width: 20px;
-            height: 20px;
-        }
+		.acrb-icon-amber { background: #fffbeb; color: #d97706; }
+		.acrb-icon-pink { background: #fdf2f8; color: #db2777; }
 
-        .acrb-view-all {
-            font-size: 13px;
-            font-weight: 600;
-            color: #4f46e5;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            transition: gap 0.15s ease;
-        }
+		.acrb-shortcut-text strong {
+			display: block;
+			font-size: 14px;
+			font-weight: 700;
+			color: #0f172a;
+			font-family: 'Plus Jakarta Sans', sans-serif;
+		}
 
-        .acrb-view-all:hover {
-            color: #4338ca;
-            gap: 7px;
-        }
+		.acrb-shortcut-text span {
+			font-size: 12px;
+			color: #64748b;
+		}
 
-        /* Stack of Pending Requests */
-        .acrb-request-feed {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+		/* Metric KPI Cards (4 Columns) */
+		.acrb-kpi-grid {
+			display: grid;
+			grid-template-columns: repeat(4, 1fr);
+			gap: 20px;
+			margin-bottom: 24px;
+		}
 
-        .acrb-request-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 16px 20px;
-            background: #f8fafc;
-            border: 1px solid #f1f5f9;
-            border-radius: 12px;
-            transition: all 0.2s ease;
-        }
+		.acrb-kpi-card {
+			background: #ffffff;
+			border: 1px solid #e2e8f0;
+			border-radius: 16px;
+			padding: 22px 24px;
+			box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.02);
+			position: relative;
+			overflow: hidden;
+		}
 
-        .acrb-request-row:hover {
-            background: #ffffff;
-            border-color: #cbd5e1;
-            box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.05);
-            transform: translateX(2px);
-        }
+		.acrb-kpi-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-start;
+			margin-bottom: 12px;
+		}
 
-        .acrb-customer-block {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
+		.acrb-kpi-label {
+			font-size: 12px;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.06em;
+			color: #64748b;
+		}
 
-        .acrb-avatar {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-            color: #334155;
-            font-weight: 700;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #cbd5e1;
-            flex-shrink: 0;
-        }
+		.acrb-kpi-badge {
+			font-size: 11px;
+			font-weight: 700;
+			padding: 3px 8px;
+			border-radius: 6px;
+		}
 
-        .acrb-customer-info strong {
-            display: block;
-            font-size: 14px;
-            color: #0f172a;
-            margin-bottom: 3px;
-        }
+		.badge-success { background: #ecfdf5; color: #059669; }
+		.badge-warning { background: #fffbeb; color: #d97706; }
+		.badge-primary { background: #eef2ff; color: #4f46e5; }
 
-        .acrb-customer-info span {
-            font-size: 12.5px;
-            color: #64748b;
-        }
+		.acrb-kpi-val {
+			font-family: 'Plus Jakarta Sans', sans-serif;
+			font-size: 30px;
+			font-weight: 800;
+			color: #0f172a;
+			margin: 0 0 6px 0;
+			letter-spacing: -0.03em;
+		}
 
-        .acrb-meta-badges {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
+		.acrb-revenue-val { font-size: 26px; color: #059669; }
 
-        .acrb-chip-pending {
-            background: #fef3c7;
-            color: #92400e;
-            padding: 4px 10px;
-            border-radius: 9999px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border: 1px solid #fde68a;
-        }
+		.acrb-kpi-footer {
+			font-size: 12.5px;
+			color: #64748b;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
 
-        .acrb-cost {
-            font-size: 16px;
-            font-weight: 700;
-            color: #0f172a;
-            min-width: 90px;
-            text-align: right;
-        }
+		.acrb-kpi-mini-icon { font-size: 12px; width: 12px; height: 12px; }
+		.acrb-text-emerald { color: #059669; font-weight: 700; }
+		.acrb-kpi-subtext { margin-left: auto; color: #64748b; }
+		.acrb-kpi-subtext-dark { margin-left: auto; font-weight: 700; color: #0f172a; }
+		.acrb-text-amber { margin-left: auto; font-weight: 700; color: #d97706; }
 
-        .acrb-btn-review {
-            background: #4f46e5;
-            color: #ffffff !important;
-            text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 12.5px;
-            font-weight: 600;
-            transition: all 0.15s ease;
-        }
+		/* Main Content Split Layout */
+		.acrb-grid-split {
+			display: grid;
+			grid-template-columns: 2fr 1fr;
+			gap: 24px;
+		}
 
-        .acrb-btn-review:hover {
-            background: #4338ca;
-            box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
-        }
+		.acrb-panel {
+			background: #ffffff;
+			border: 1px solid #e2e8f0;
+			border-radius: 16px;
+			padding: 24px;
+			box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.02);
+		}
 
-        /* Empty State */
-        .acrb-empty-state {
-            text-align: center;
-            padding: 46px 20px;
-        }
+		.acrb-panel-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 20px;
+			padding-bottom: 14px;
+			border-bottom: 1px solid #f1f5f9;
+		}
 
-        .acrb-empty-icon {
-            width: 52px;
-            height: 52px;
-            border-radius: 50%;
-            background: #ecfdf5;
-            color: #059669;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 12px;
-        }
+		.acrb-panel-header h3 {
+			font-family: 'Plus Jakarta Sans', sans-serif;
+			font-size: 16px;
+			font-weight: 800;
+			margin: 0;
+			color: #0f172a;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
 
-        .acrb-empty-icon .dashicons {
-            font-size: 26px;
-            width: 26px;
-            height: 26px;
-        }
+		.acrb-panel-header h3 .dashicons { color: #4f46e5; }
 
-        @media(max-width: 1024px) {
-            .acrb-kpi-grid { grid-template-columns: 1fr; }
-            .acrb-shortcuts-strip { grid-template-columns: repeat(2, 1fr); }
-            .acrb-hero-panel { flex-direction: column; align-items: flex-start; gap: 20px; }
-        }
+		.acrb-view-all {
+			font-size: 13px;
+			font-weight: 700;
+			color: #4f46e5;
+			text-decoration: none;
+			transition: color 0.2s;
+		}
 
-        @media(max-width: 680px) {
-            .acrb-request-row { flex-direction: column; align-items: flex-start; gap: 14px; }
-            .acrb-meta-badges { width: 100%; justify-content: space-between; }
-            .acrb-shortcuts-strip { grid-template-columns: 1fr; }
-        }
-    </style>
+		.acrb-view-all:hover { color: #3730a3; }
 
-    <div class="acrb-dash-shell">
-        <!-- Hero Header -->
-        <div class="acrb-hero-panel">
-            <div>
-                <span class="acrb-hero-tag">
-                    <span class="dashicons dashicons-shield"></span>
-                    <?php esc_html_e( 'Operations Center', 'awesome-car-rental' ); ?>
-                </span>
-                <h1 class="acrb-hero-heading"><?php esc_html_e( 'Fleet Operations Hub', 'awesome-car-rental' ); ?></h1>
-                <p class="acrb-hero-lead">
-                    <?php 
-                    printf(
-                        /* translators: %s: number of pending reservations */
-                        esc_html__( 'System operational. There are %s pending reservation requests awaiting dispatch authorization.', 'awesome-car-rental' ),
-                        '<strong style="color: #a5b4fc; font-weight: 700;">' . esc_html( $pending_count ) . '</strong>'
-                    ); 
-                    ?>
-                </p>
-            </div>
-            <div class="acrb-hero-actions">
-                <a href="<?php echo esc_url( $cars_url ); ?>" class="acrb-btn-glass">
-                    <span class="dashicons dashicons-car"></span> 
-                    <span><?php esc_html_e( 'Fleet Catalog', 'awesome-car-rental' ); ?></span>
-                </a>
-                <a href="<?php echo esc_url( $bookings_url . '&filter=pending' ); ?>" class="acrb-btn-accent">
-                    <span class="dashicons dashicons-clock"></span> 
-                    <span><?php esc_html_e( 'Review Requests', 'awesome-car-rental' ); ?></span>
-                </a>
-            </div>
-        </div>
+		.acrb-table-responsive { overflow-x: auto; }
 
-        <!-- Metric KPI Cards -->
-        <div class="acrb-kpi-grid">
-            <div class="acrb-kpi-card">
-                <div>
-                    <span class="acrb-kpi-label"><?php esc_html_e( 'Total Fleet Capacity', 'awesome-car-rental' ); ?></span>
-                    <h3 class="acrb-kpi-val"><?php echo esc_html( $total_cars ); ?></h3>
-                    <span class="acrb-kpi-sub"><?php esc_html_e( 'Registered Vehicles', 'awesome-car-rental' ); ?></span>
-                </div>
-                <div class="acrb-kpi-icon kpi-indigo">
-                    <span class="dashicons dashicons-car"></span>
-                </div>
-            </div>
+		.acrb-table {
+			width: 100%;
+			border-collapse: collapse;
+			text-align: left;
+		}
 
-            <div class="acrb-kpi-card">
-                <div>
-                    <span class="acrb-kpi-label"><?php esc_html_e( 'Action Required', 'awesome-car-rental' ); ?></span>
-                    <h3 class="acrb-kpi-val" style="color: #d97706;"><?php echo esc_html( $pending_count ); ?></h3>
-                    <span class="acrb-kpi-sub"><?php esc_html_e( 'Pending Authorizations', 'awesome-car-rental' ); ?></span>
-                </div>
-                <div class="acrb-kpi-icon kpi-amber">
-                    <span class="dashicons dashicons-warning"></span>
-                </div>
-            </div>
+		.acrb-table th {
+			background: #f8fafc;
+			color: #64748b;
+			font-size: 11.5px;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			padding: 10px 14px;
+			border-bottom: 1px solid #e2e8f0;
+		}
 
-            <div class="acrb-kpi-card">
-                <div>
-                    <span class="acrb-kpi-label"><?php esc_html_e( 'Confirmed Revenue', 'awesome-car-rental' ); ?></span>
-                    <h3 class="acrb-kpi-val" style="color: #059669;"><?php echo esc_html( $format_price( $revenue_total ) ); ?></h3>
-                    <span class="acrb-kpi-sub"><?php esc_html_e( 'Paid & Confirmed Bookings', 'awesome-car-rental' ); ?></span>
-                </div>
-                <div class="acrb-kpi-icon kpi-emerald">
-                    <span class="dashicons dashicons-chart-line"></span>
-                </div>
-            </div>
-        </div>
+		.acrb-table td {
+			padding: 14px;
+			font-size: 13.5px;
+			color: #334155;
+			border-bottom: 1px solid #f1f5f9;
+			vertical-align: middle;
+		}
 
-        <!-- Quick Access Navigation Cards -->
-        <div class="acrb-shortcuts-strip">
-            <a href="<?php echo esc_url( $cars_url . '&action=add' ); ?>" class="acrb-shortcut-btn">
-                <span class="dashicons dashicons-plus-alt2"></span>
-                <span><?php esc_html_e( 'Add New Vehicle', 'awesome-car-rental' ); ?></span>
-            </a>
-            <a href="<?php echo esc_url( $bookings_url . '&action=new' ); ?>" class="acrb-shortcut-btn">
-                <span class="dashicons dashicons-calendar-alt"></span>
-                <span><?php esc_html_e( 'Manual Reservation', 'awesome-car-rental' ); ?></span>
-            </a>
-            <a href="<?php echo esc_url( $extras_url ); ?>" class="acrb-shortcut-btn">
-                <span class="dashicons dashicons-star-empty"></span>
-                <span><?php esc_html_e( 'Rental Add-ons', 'awesome-car-rental' ); ?></span>
-            </a>
-            <a href="<?php echo esc_url( $reports_url ); ?>" class="acrb-shortcut-btn">
-                <span class="dashicons dashicons-chart-pie"></span>
-                <span><?php esc_html_e( 'Revenue Reports', 'awesome-car-rental' ); ?></span>
-            </a>
-        </div>
+		.acrb-table tbody tr:hover { background: #fafafa; }
 
-        <!-- Urgent Requests Card -->
-        <div class="acrb-panel">
-            <div class="acrb-panel-head">
-                <h3>
-                    <span class="dashicons dashicons-hourglass"></span>
-                    <span><?php esc_html_e( 'Urgent Dispatch Requests', 'awesome-car-rental' ); ?></span>
-                </h3>
-                <a href="<?php echo esc_url( $bookings_url ); ?>" class="acrb-view-all">
-                    <span><?php esc_html_e( 'Open All Bookings', 'awesome-car-rental' ); ?></span>
-                    <span class="dashicons dashicons-arrow-right-alt2" style="font-size:16px;"></span>
-                </a>
-            </div>
+		.acrb-code-pill {
+			background: #f1f5f9;
+			padding: 3px 6px;
+			border-radius: 4px;
+			font-weight: 700;
+			color: #4f46e5;
+		}
 
-            <?php if ( $pending_list ) : ?>
-                <div class="acrb-request-feed">
-                    <?php foreach ( $pending_list as $booking ) : 
-                        $booking_id    = $booking->ID;
-                        $customer_name = get_post_meta( $booking_id, 'customer_name', true ) ?: __( 'Guest User', 'awesome-car-rental' );
-                        $car_id        = get_post_meta( $booking_id, 'car_id', true );
-                        $car_name      = $car_id ? get_the_title( $car_id ) : __( 'General Rental', 'awesome-car-rental' );
-                        $raw_price     = get_post_meta( $booking_id, 'total_price', true );
-                        $price_val     = floatval( preg_replace( '/[^\d.]/', '', $raw_price ) );
-                        $user_initials = strtoupper( substr( sanitize_text_field( $customer_name ), 0, 2 ) );
-                        
-                        $review_url    = wp_nonce_url( $bookings_url . '&action=edit&booking_id=' . intval( $booking_id ), 'acrb_car_action' );
-                    ?>
-                        <div class="acrb-request-row">
-                            <div class="acrb-customer-block">
-                                <div class="acrb-avatar"><?php echo esc_html( $user_initials ); ?></div>
-                                <div class="acrb-customer-info">
-                                    <strong><?php echo esc_html( $customer_name ); ?></strong>
-                                    <span>
-                                        <?php 
-                                        printf(
-                                            /* translators: 1: vehicle title, 2: human readable time ago */
-                                            esc_html__( 'Vehicle: %1$s • %2$s ago', 'awesome-car-rental' ),
-                                            '<strong style="color: #334155;">' . esc_html( $car_name ) . '</strong>',
-                                            esc_html( human_time_diff( get_the_time( 'U', $booking_id ), current_time( 'timestamp' ) ) )
-                                        );
-                                        ?>
-                                    </span>
-                                </div>
-                            </div>
-                            
-                            <div class="acrb-meta-badges">
-                                <span class="acrb-chip-pending"><?php esc_html_e( 'Pending Approval', 'awesome-car-rental' ); ?></span>
-                                <div class="acrb-cost"><?php echo esc_html( $format_price( $price_val ) ); ?></div>
-                                <a href="<?php echo esc_url( $review_url ); ?>" class="acrb-btn-review">
-                                    <?php esc_html_e( 'Review Request', 'awesome-car-rental' ); ?>
-                                </a>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php else : ?>
-                <div class="acrb-empty-state">
-                    <div class="acrb-empty-icon">
-                        <span class="dashicons dashicons-saved"></span>
-                    </div>
-                    <h4 style="margin: 0 0 4px; font-size: 15px; font-weight: 700; color: #0f172a;"><?php esc_html_e( 'No Pending Authorizations', 'awesome-car-rental' ); ?></h4>
-                    <p style="margin: 0; font-size: 13px; color: #64748b;"><?php esc_html_e( 'All reservation requests have been processed and confirmed.', 'awesome-car-rental' ); ?></p>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
-    <?php
+		.acrb-table-car-icon {
+			font-size: 15px;
+			width: 15px;
+			height: 15px;
+			color: #64748b;
+			vertical-align: middle;
+		}
+
+		.acrb-status-badge {
+			display: inline-flex;
+			align-items: center;
+			gap: 5px;
+			padding: 4px 10px;
+			border-radius: 9999px;
+			font-size: 11px;
+			font-weight: 700;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+
+		.status-confirmed { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+		.status-pending { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+		.status-active { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+		.status-completed { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+
+		.acrb-empty-box {
+			text-align: center;
+			padding: 40px;
+			color: #64748b;
+		}
+
+		.acrb-btn-primary-inline {
+			background: #4f46e5;
+			display: inline-flex;
+			margin-top: 10px;
+		}
+
+		.acrb-total-counter {
+			font-size: 12px;
+			font-weight: 700;
+			color: #64748b;
+		}
+
+		.acrb-gauge-wrap {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			padding: 10px 0 20px 0;
+		}
+
+		.acrb-gauge-outer {
+			width: 130px;
+			height: 130px;
+			border-radius: 50%;
+			background: conic-gradient(#10b981 0% 100%, #f1f5f9 100% 100%);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.2);
+		}
+
+		.acrb-gauge-inner {
+			width: 100px;
+			height: 100px;
+			border-radius: 50%;
+			background: #ffffff;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.acrb-gauge-percent {
+			font-family: 'Plus Jakarta Sans', sans-serif;
+			font-size: 20px;
+			font-weight: 800;
+			color: #0f172a;
+		}
+
+		.acrb-gauge-label {
+			font-size: 10px;
+			font-weight: 700;
+			color: #64748b;
+			text-transform: uppercase;
+		}
+
+		.acrb-fleet-stats-container {
+			background: #f8fafc;
+			border-radius: 12px;
+			padding: 14px 18px;
+			border: 1px solid #f1f5f9;
+		}
+
+		.acrb-fleet-stat-row {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 12px 0;
+			border-bottom: 1px solid #f1f5f9;
+			font-size: 13.5px;
+		}
+
+		.acrb-fleet-stat-row:last-child { border-bottom: none; }
+
+		.acrb-stat-dot {
+			width: 10px;
+			height: 10px;
+			border-radius: 50%;
+			display: inline-block;
+			margin-right: 8px;
+		}
+
+		.dot-emerald { background: #10b981; }
+		.dot-indigo { background: #6366f1; }
+		.dot-amber { background: #f59e0b; }
+
+		.acrb-calendar-link-wrap { margin-top: 20px; }
+
+		.acrb-calendar-full-btn {
+			background: #4f46e5;
+			width: 100%;
+			justify-content: center;
+			padding: 10px;
+			font-size: 13.5px;
+		}
+
+		@media (max-width: 1200px) {
+			.acrb-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+			.acrb-shortcuts-strip { grid-template-columns: repeat(2, 1fr); }
+			.acrb-grid-split { grid-template-columns: 1fr; }
+		}
+
+		@media (max-width: 768px) {
+			.acrb-kpi-grid { grid-template-columns: 1fr; }
+			.acrb-shortcuts-strip { grid-template-columns: 1fr; }
+			.acrb-telemetry-bar { flex-direction: column; align-items: flex-start; gap: 14px; }
+		}
+	</style>
+
+	<div class="acrb-dash-shell">
+		
+		<!-- Telemetry Header Banner -->
+		<div class="acrb-telemetry-bar">
+			<div class="acrb-telemetry-title">
+				<h2><?php esc_html_e( 'Dashboard & Fleet Telemetry', 'awesome-car-rental' ); ?></h2>
+				<p><?php esc_html_e( 'Real-time asset overview, load ratios, and active reservation yield.', 'awesome-car-rental' ); ?></p>
+			</div>
+			<div class="acrb-telemetry-pills">
+				<div class="acrb-badge-live">
+					<span class="acrb-pulse-dot"></span>
+					<?php esc_html_e( 'SYSTEM ACTIVE', 'awesome-car-rental' ); ?>
+				</div>
+				<div class="acrb-clock-pill">
+					<span class="dashicons dashicons-clock acrb-icon-middle"></span>
+					<?php echo esc_html( gmdate( 'h:i:s A' ) ); ?>
+				</div>
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=awesome_car_rental&tab=dashboard' ) ); ?>" class="acrb-refresh-btn">
+					<span class="dashicons dashicons-update acrb-icon-middle"></span>
+					<?php esc_html_e( 'Refresh', 'awesome-car-rental' ); ?>
+				</a>
+			</div>
+		</div>
+
+		<!-- Quick Action Shortcuts -->
+		<div class="acrb-shortcuts-strip">
+			<a href="<?php echo esc_url( $bookings_url . '&action=new' ); ?>" class="acrb-shortcut-card">
+				<div class="acrb-shortcut-icon">
+					<span class="dashicons dashicons-plus"></span>
+				</div>
+				<div class="acrb-shortcut-text">
+					<strong><?php esc_html_e( 'Create Booking', 'awesome-car-rental' ); ?></strong>
+					<span><?php esc_html_e( 'New reservation', 'awesome-car-rental' ); ?></span>
+				</div>
+			</a>
+			<a href="<?php echo esc_url( $cars_url . '&action=add' ); ?>" class="acrb-shortcut-card">
+				<div class="acrb-shortcut-icon">
+					<span class="dashicons dashicons-car"></span>
+				</div>
+				<div class="acrb-shortcut-text">
+					<strong><?php esc_html_e( 'Register Vehicle', 'awesome-car-rental' ); ?></strong>
+					<span><?php esc_html_e( 'Add new car', 'awesome-car-rental' ); ?></span>
+				</div>
+			</a>
+			<a href="<?php echo esc_url( $maintenance_url . '&action=add' ); ?>" class="acrb-shortcut-card">
+				<div class="acrb-shortcut-icon acrb-icon-amber">
+					<span class="dashicons dashicons-admin-tools"></span>
+				</div>
+				<div class="acrb-shortcut-text">
+					<strong><?php esc_html_e( 'Service Order', 'awesome-car-rental' ); ?></strong>
+					<span><?php esc_html_e( 'Log maintenance', 'awesome-car-rental' ); ?></span>
+				</div>
+			</a>
+			<a href="<?php echo esc_url( admin_url( 'admin.php?page=awesome_car_rental&tab=inspections' ) ); ?>" class="acrb-shortcut-card">
+				<div class="acrb-shortcut-icon acrb-icon-pink">
+					<span class="dashicons dashicons-clipboard"></span>
+				</div>
+				<div class="acrb-shortcut-text">
+					<strong><?php esc_html_e( 'Inspection', 'awesome-car-rental' ); ?></strong>
+					<span><?php esc_html_e( 'File check', 'awesome-car-rental' ); ?></span>
+				</div>
+			</a>
+		</div>
+
+		<!-- Metric KPI Cards (4 Columns) -->
+		<div class="acrb-kpi-grid">
+			<div class="acrb-kpi-card">
+				<div class="acrb-kpi-header">
+					<span class="acrb-kpi-label"><?php esc_html_e( 'Total Vehicles', 'awesome-car-rental' ); ?></span>
+					<span class="acrb-kpi-badge badge-primary"><span class="dashicons dashicons-car acrb-kpi-mini-icon"></span></span>
+				</div>
+				<h3 class="acrb-kpi-val"><?php echo esc_html( (string) $total_cars ); ?></h3>
+				<div class="acrb-kpi-footer">
+					<span class="acrb-text-emerald">▲ 100%</span> 
+					<span class="acrb-kpi-subtext"><?php echo esc_html( (string) $available_cars ); ?> Available</span>
+				</div>
+			</div>
+
+			<div class="acrb-kpi-card">
+				<div class="acrb-kpi-header">
+					<span class="acrb-kpi-label"><?php esc_html_e( 'Total Bookings', 'awesome-car-rental' ); ?></span>
+					<span class="acrb-kpi-badge badge-success"><?php esc_html_e( 'All-Time', 'awesome-car-rental' ); ?></span>
+				</div>
+				<h3 class="acrb-kpi-val"><?php echo esc_html( (string) $total_bookings ); ?></h3>
+				<div class="acrb-kpi-footer">
+					<span><?php esc_html_e( 'Historical Bookings', 'awesome-car-rental' ); ?></span>
+					<span class="acrb-kpi-subtext-dark"><?php esc_html_e( 'Logged', 'awesome-car-rental' ); ?></span>
+				</div>
+			</div>
+
+			<div class="acrb-kpi-card">
+				<div class="acrb-kpi-header">
+					<span class="acrb-kpi-label"><?php esc_html_e( "Today's Bookings", 'awesome-car-rental' ); ?></span>
+					<span class="acrb-kpi-badge badge-warning"><?php echo esc_html( (string) $utilization_rate . '% Load' ); ?></span>
+				</div>
+				<h3 class="acrb-kpi-val"><?php echo esc_html( (string) $today_pickups ); ?></h3>
+				<div class="acrb-kpi-footer">
+					<span><?php esc_html_e( 'Today Pickups', 'awesome-car-rental' ); ?></span>
+					<span class="acrb-text-amber"><?php echo esc_html( (string) $pending_bookings ); ?> Active</span>
+				</div>
+			</div>
+
+			<div class="acrb-kpi-card">
+				<div class="acrb-kpi-header">
+					<span class="acrb-kpi-label"><?php esc_html_e( "Today's Revenue", 'awesome-car-rental' ); ?></span>
+					<span class="acrb-kpi-badge badge-success"><span class="dashicons dashicons-money-alt acrb-kpi-mini-icon"></span></span>
+				</div>
+				<h3 class="acrb-kpi-val acrb-revenue-val"><?php echo esc_html( $format_price( $revenue_total ) ); ?></h3>
+				<div class="acrb-kpi-footer">
+					<span><?php esc_html_e( 'Average Yield', 'awesome-car-rental' ); ?></span>
+					<span class="acrb-kpi-subtext-dark"><?php echo esc_html( $avg_yield ); ?></span>
+				</div>
+			</div>
+		</div>
+
+		<!-- Main Split Content: Recent Bookings & Fleet Status -->
+		<div class="acrb-grid-split">
+			
+			<!-- Left Column: Recent Bookings Table -->
+			<div class="acrb-panel">
+				<div class="acrb-panel-header">
+					<h3>
+						<span class="dashicons dashicons-list-view"></span>
+						<?php esc_html_e( 'Recent Bookings', 'awesome-car-rental' ); ?>
+					</h3>
+					<a href="<?php echo esc_url( $bookings_url ); ?>" class="acrb-view-all">
+						<?php esc_html_e( 'View All →', 'awesome-car-rental' ); ?>
+					</a>
+				</div>
+
+				<?php if ( ! empty( $recent_bookings ) ) : ?>
+					<div class="acrb-table-responsive">
+						<table class="acrb-table">
+							<thead>
+								<tr>
+									<th><?php esc_html_e( 'ID', 'awesome-car-rental' ); ?></th>
+									<th><?php esc_html_e( 'Client', 'awesome-car-rental' ); ?></th>
+									<th><?php esc_html_e( 'Vehicle', 'awesome-car-rental' ); ?></th>
+									<th><?php esc_html_e( 'Amount', 'awesome-car-rental' ); ?></th>
+									<th><?php esc_html_e( 'Status', 'awesome-car-rental' ); ?></th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php foreach ( $recent_bookings as $booking ) : 
+									$b_id     = absint( $booking['id'] );
+									$b_code   = esc_html( (string) ( $booking['booking_code'] ?? 'DNF-BKG-' . $b_id ) );
+									$c_name   = esc_html( (string) ( $booking['customer_name'] ?? 'Guest Client' ) );
+									$car_name = esc_html( (string) ( $booking['car_name'] ?? 'Fleet Vehicle' ) );
+									$amount   = (float) ( $booking['total_amount'] ?? 0 );
+									$status   = sanitize_text_field( $booking['booking_status'] ?? 'confirmed' );
+									
+									$status_class = 'status-confirmed';
+									if ( 'pending' === $status ) {
+										$status_class = 'status-pending';
+									} elseif ( 'active' === $status ) {
+										$status_class = 'status-active';
+									} elseif ( 'completed' === $status ) {
+										$status_class = 'status-completed';
+									}
+								?>
+									<tr>
+										<td><code class="acrb-code-pill">#<?php echo esc_html( $b_code ); ?></code></td>
+										<td><strong><?php echo esc_html( $c_name ); ?></strong></td>
+										<td><span class="dashicons dashicons-car acrb-table-car-icon"></span> <?php echo esc_html( $car_name ); ?></td>
+										<td><strong><?php echo esc_html( $format_price( $amount ) ); ?></strong></td>
+										<td><span class="acrb-status-badge <?php echo esc_attr( $status_class ); ?>">● <?php echo esc_html( ucfirst( $status ) ); ?></span></td>
+									</tr>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+					</div>
+				<?php else : ?>
+					<div class="acrb-empty-box">
+						<p><?php esc_html_e( 'No recent bookings recorded in the system yet.', 'awesome-car-rental' ); ?></p>
+						<a href="<?php echo esc_url( $bookings_url . '&action=new' ); ?>" class="acrb-refresh-btn acrb-btn-primary-inline"><?php esc_html_e( 'Create First Reservation', 'awesome-car-rental' ); ?></a>
+					</div>
+				<?php endif; ?>
+			</div>
+
+			<!-- Right Column: Fleet Operational Status & Quick Diagnostics -->
+			<div class="acrb-panel">
+				<div class="acrb-panel-header">
+					<h3>
+						<span class="dashicons dashicons-chart-pie"></span>
+						<?php esc_html_e( 'Fleet Status', 'awesome-car-rental' ); ?>
+					</h3>
+					<span class="acrb-total-counter"><?php echo esc_html( (string) $total_cars ); ?> <?php esc_html_e( 'Total', 'awesome-car-rental' ); ?></span>
+				</div>
+
+				<div class="acrb-gauge-wrap">
+					<div class="acrb-gauge-outer">
+						<div class="acrb-gauge-inner">
+							<strong class="acrb-gauge-percent"><?php echo esc_html( (string) $utilization_rate ); ?>%</strong>
+							<span class="acrb-gauge-label"><?php esc_html_e( 'Active', 'awesome-car-rental' ); ?></span>
+						</div>
+					</div>
+				</div>
+
+				<div class="acrb-fleet-stats-container">
+					<div class="acrb-fleet-stat-row">
+						<span><span class="acrb-stat-dot dot-emerald"></span><?php esc_html_e( 'Available', 'awesome-car-rental' ); ?></span>
+						<strong><?php echo esc_html( (string) $available_cars ); ?></strong>
+					</div>
+					<div class="acrb-fleet-stat-row">
+						<span><span class="acrb-stat-dot dot-indigo"></span><?php esc_html_e( 'Rented', 'awesome-car-rental' ); ?></span>
+						<strong><?php echo esc_html( (string) $rented_cars ); ?></strong>
+					</div>
+					<div class="acrb-fleet-stat-row">
+						<span><span class="acrb-stat-dot dot-amber"></span><?php esc_html_e( 'Maintenance', 'awesome-car-rental' ); ?></span>
+						<strong><?php echo esc_html( (string) $maintenance_cars ); ?></strong>
+					</div>
+				</div>
+
+				<div class="acrb-calendar-link-wrap">
+					<a href="<?php echo esc_url( $calendar_url ); ?>" class="acrb-refresh-btn acrb-calendar-full-btn">
+						<span class="dashicons dashicons-calendar-alt"></span>
+						<?php esc_html_e( 'Open Availability Calendar', 'awesome-car-rental' ); ?>
+					</a>
+				</div>
+			</div>
+
+		</div>
+
+	</div>
+	<?php
 }

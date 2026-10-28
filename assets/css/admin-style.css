@@ -74,7 +74,7 @@
 
 .afd-right-box {
     flex: 1;
-    min-width: 300px; /* optional */
+    min-width: 100% !important; /* optional */
     border: 1px solid #ddd;
     background-color: #fff;
     padding: 20px;
