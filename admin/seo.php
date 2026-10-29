@@ -4,7 +4,7 @@
  * Enterprise SERP Snippet Preview, Social Share Cards, and Automated JSON-LD Structured Data.
  *
  * @package Awesome_Car_Rental
- * @since   2.2.0
+ * @since   3.1.0
  */
 
 declare( strict_types=1 );
@@ -80,11 +80,11 @@ function acrb_render_seo_meta_tags(): void {
             'description'     => $parsed_desc,
             'url'             => home_url(),
             'potentialAction' => array(
-                '@type'       => 'ReserveAction',
-                'target'      => home_url( '/acrb-cars/' ),
-                'result'      => array(
-                    '@type'   => 'RentalCarReservation',
-                    'name'    => 'Car Rental Reservation',
+                '@type'  => 'ReserveAction',
+                'target' => home_url( '/acrb-cars/' ),
+                'result' => array(
+                    '@type' => 'RentalCarReservation',
+                    'name'  => 'Car Rental Reservation',
                 ),
             ),
         );
@@ -101,9 +101,10 @@ function acrb_seo_tab(): void {
         wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'awesome-car-rental' ), 403 );
     }
 
-    $saved_notice = false;
+    $page_slug = 'awesome_car_rental';
+    $base_url  = admin_url( 'admin.php?page=' . $page_slug . '&tab=seo' );
 
-    // Handle Form Save
+    // Handle Form Save & Safe Redirect
     if ( isset( $_POST['acrb_seo_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['acrb_seo_nonce'] ) ), 'acrb_save_seo_settings' ) ) {
         update_option( 'acrb_seo_meta_title', sanitize_text_field( wp_unslash( $_POST['acrb_seo_meta_title'] ?? '' ) ) );
         update_option( 'acrb_seo_meta_desc', sanitize_textarea_field( wp_unslash( $_POST['acrb_seo_meta_desc'] ?? '' ) ) );
@@ -112,7 +113,17 @@ function acrb_seo_tab(): void {
         update_option( 'acrb_seo_enable_canonical', isset( $_POST['acrb_seo_enable_canonical'] ) ? 'yes' : 'no' );
         update_option( 'acrb_seo_twitter_card_type', sanitize_key( wp_unslash( $_POST['acrb_seo_twitter_card_type'] ?? 'summary_large_image' ) ) );
         update_option( 'acrb_seo_robots_index', isset( $_POST['acrb_seo_robots_index'] ) ? sanitize_key( wp_unslash( $_POST['acrb_seo_robots_index'] ) ) : 'index' );
-        $saved_notice = true;
+
+        $redirect_url = add_query_arg( 'updated', '1', $base_url );
+
+        if ( headers_sent() ) {
+            echo '<script>window.location.replace(' . wp_json_encode( esc_url_raw( $redirect_url ) ) . ');</script>';
+            echo '<noscript><meta http-equiv="refresh" content="0;url=' . esc_url( $redirect_url ) . '"></noscript>';
+            exit;
+        }
+
+        wp_safe_redirect( $redirect_url );
+        exit;
     }
 
     // Retrieve Options
@@ -130,82 +141,120 @@ function acrb_seo_tab(): void {
 
     <style>
         .acrb-seo-wrap {
-            max-width: 1280px;
-            margin: 20px 0 40px;
+            width: 100%;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            color: #0f172a;
+            color: #1e293b;
             box-sizing: border-box;
         }
-        .acrb-seo-header {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 24px 30px;
-            margin-bottom: 24px;
-            box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);
+        .acrb-seo-wrap *,
+        .acrb-seo-wrap *::before,
+        .acrb-seo-wrap *::after {
+            box-sizing: border-box;
+        }
+
+        /* Topbar Header Banner */
+        .acrb-seo-topbar-header {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            gap: 20px;
+            align-items: center;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #4f46e5;
+            border-radius: 14px;
+            padding: 18px 24px;
+            box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.03);
+            margin-bottom: 22px;
+            gap: 16px;
             flex-wrap: wrap;
         }
-        .acrb-seo-title-group h2 {
-            margin: 0;
-            font-size: 22px;
-            font-weight: 800;
-            color: #0f172a;
+        .acrb-seo-topbar-title-group {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 14px;
         }
-        .acrb-seo-title-group p {
-            margin: 4px 0 0;
-            font-size: 13.5px;
+        .acrb-seo-topbar-icon {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            background: #eef2ff;
+            color: #4f46e5;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(79, 70, 229, 0.15);
+            flex-shrink: 0;
+        }
+        .acrb-seo-topbar-icon .dashicons {
+            font-size: 22px;
+            width: 22px;
+            height: 22px;
+        }
+        .acrb-seo-topbar-meta h1 {
+            font-size: 19px;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0 0 3px 0;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+        .acrb-seo-topbar-meta p {
+            margin: 0;
+            font-size: 13px;
             color: #64748b;
         }
+
+        /* SEO Score Meter */
         .acrb-seo-score-meter {
             display: flex;
             align-items: center;
             gap: 12px;
-            background: #f8fafc;
+            background: #ffffff;
             border: 1px solid #e2e8f0;
             border-radius: 12px;
             padding: 8px 16px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
         }
         .acrb-seo-score-circle {
-            width: 36px;
-            height: 36px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
-            background: #4f46e5;
+            background: #059669;
             color: #ffffff;
             font-size: 14px;
             font-weight: 800;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: background 0.2s ease;
         }
         .acrb-seo-score-text strong {
             display: block;
             font-size: 13px;
             color: #0f172a;
+            font-weight: 700;
         }
         .acrb-seo-score-text span {
             font-size: 11px;
             color: #64748b;
         }
-        .acrb-seo-alert {
+
+        /* Feedback Notice */
+        .acrb-seo-alert-success {
             background: #ecfdf5;
             border: 1px solid #a7f3d0;
             color: #065f46;
-            padding: 14px 20px;
-            border-radius: 12px;
-            font-size: 14px;
+            padding: 12px 18px;
+            border-radius: 10px;
+            font-size: 13.5px;
             font-weight: 600;
-            margin-bottom: 24px;
+            margin-bottom: 22px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
+
+        /* 2-Column Responsive Layout */
         .acrb-seo-grid {
             display: grid;
             grid-template-columns: 1fr 440px;
@@ -215,18 +264,18 @@ function acrb_seo_tab(): void {
         .acrb-seo-card {
             background: #ffffff;
             border: 1px solid #e2e8f0;
-            border-radius: 16px;
+            border-radius: 14px;
             box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);
-            padding: 26px;
-            margin-bottom: 24px;
+            padding: 24px;
+            margin-bottom: 22px;
         }
         .acrb-seo-card-title {
-            margin: 0 0 16px;
+            margin: 0 0 18px;
             font-size: 14.5px;
             font-weight: 800;
             color: #0f172a;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.04em;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -235,9 +284,12 @@ function acrb_seo_tab(): void {
         }
         .acrb-seo-card-title .dashicons {
             color: #4f46e5;
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
         }
         .acrb-seo-form-group {
-            margin-bottom: 22px;
+            margin-bottom: 20px;
         }
         .acrb-seo-form-group:last-child {
             margin-bottom: 0;
@@ -254,34 +306,81 @@ function acrb_seo_tab(): void {
             font-size: 13.5px;
         }
         .acrb-seo-counter {
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 700;
             color: #64748b;
         }
         .acrb-seo-counter.limit-good { color: #059669; }
         .acrb-seo-counter.limit-warn { color: #d97706; }
         .acrb-seo-counter.limit-bad  { color: #dc2626; }
+
+        /* Form Controls */
         .acrb-seo-input,
         .acrb-seo-textarea,
         .acrb-seo-select {
-            width: 100%;
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 10px;
-            padding: 10px 14px;
-            font-size: 13.5px;
-            color: #1e293b;
-            box-sizing: border-box;
-            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            display: block;
+            width: 100% !important;
+            max-width: 100% !important;
+            background: #f8fafc !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            padding: 0 14px !important;
+            font-size: 13.5px !important;
+            font-family: inherit !important;
+            color: #1e293b !important;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
+        }
+        .acrb-seo-input,
+        .acrb-seo-select {
+            height: 42px !important;
+            line-height: 40px !important;
+        }
+        .acrb-seo-textarea {
+            height: auto !important;
+            padding: 10px 14px !important;
+            line-height: 1.5 !important;
+            resize: vertical;
+        }
+        .acrb-seo-input:hover,
+        .acrb-seo-textarea:hover,
+        .acrb-seo-select:hover {
+            border-color: #94a3b8 !important;
+            background: #ffffff !important;
         }
         .acrb-seo-input:focus,
         .acrb-seo-textarea:focus,
         .acrb-seo-select:focus {
-            background: #ffffff;
-            border-color: #4f46e5;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+            background: #ffffff !important;
+            border-color: #4f46e5 !important;
+            outline: none !important;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
         }
+
+        /* Select Dropdown Wrap */
+        .acrb-seo-select-wrap {
+            position: relative;
+            width: 100%;
+        }
+        .acrb-seo-select-wrap select {
+            appearance: none;
+            -webkit-appearance: none;
+            padding-right: 36px !important;
+            cursor: pointer;
+        }
+        .acrb-seo-select-arrow {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: #64748b;
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Token Pills */
         .acrb-seo-tokens-wrap {
             display: flex;
             gap: 6px;
@@ -311,15 +410,15 @@ function acrb_seo_tab(): void {
         }
         .acrb-seo-media-row {
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
         .acrb-seo-btn-media {
-            background: #f1f5f9;
+            background: #f8fafc;
             border: 1px solid #cbd5e1;
             color: #334155;
             font-weight: 700;
             font-size: 13px;
-            border-radius: 10px;
+            border-radius: 8px;
             padding: 0 16px;
             cursor: pointer;
             white-space: nowrap;
@@ -327,11 +426,15 @@ function acrb_seo_tab(): void {
             align-items: center;
             gap: 6px;
             transition: all 0.15s ease;
+            height: 42px;
         }
         .acrb-seo-btn-media:hover {
-            background: #e2e8f0;
+            background: #f1f5f9;
             color: #0f172a;
+            border-color: #94a3b8;
         }
+
+        /* Toggles */
         .acrb-seo-toggle-group {
             display: flex;
             align-items: center;
@@ -339,7 +442,7 @@ function acrb_seo_tab(): void {
             padding: 14px 16px;
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 12px;
+            border-radius: 10px;
             margin-bottom: 12px;
         }
         .acrb-seo-toggle-group:last-child {
@@ -397,22 +500,29 @@ function acrb_seo_tab(): void {
         input:checked + .acrb-seo-slider:before {
             transform: translateX(20px);
         }
+
+        /* Submit Button */
         .acrb-seo-submit-btn {
             background: #4f46e5;
             color: #ffffff;
             border: none;
             padding: 12px 28px;
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 700;
-            border-radius: 10px;
+            border-radius: 8px;
             cursor: pointer;
-            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25);
-            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+            transition: background 0.15s ease, transform 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
         .acrb-seo-submit-btn:hover {
             background: #4338ca;
             transform: translateY(-1px);
         }
+
+        /* Sidebar Preview Modules */
         .acrb-seo-preview-sidebar {
             position: sticky;
             top: 40px;
@@ -424,15 +534,15 @@ function acrb_seo_tab(): void {
             margin-bottom: 12px;
         }
         .acrb-seo-device-title {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 800;
             color: #475569;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.04em;
         }
         .acrb-seo-device-toggles {
             display: flex;
-            gap: 4px;
+            gap: 3px;
             background: #f1f5f9;
             padding: 3px;
             border-radius: 8px;
@@ -441,26 +551,29 @@ function acrb_seo_tab(): void {
             background: transparent;
             border: none;
             padding: 4px 10px;
-            font-size: 11.5px;
+            font-size: 11px;
             font-weight: 700;
             color: #64748b;
             border-radius: 6px;
             cursor: pointer;
+            transition: all 0.15s ease;
         }
         .acrb-seo-device-btn.active {
             background: #ffffff;
             color: #0f172a;
             box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
+
+        /* Google SERP Card Preview */
         .acrb-google-box {
             background: #ffffff;
-            border: 1px solid #dadce0;
+            border: 1px solid #e2e8f0;
             border-radius: 12px;
             padding: 16px;
             transition: max-width 0.2s ease;
         }
         .acrb-google-box.mobile {
-            max-width: 360px;
+            max-width: 340px;
             margin: 0 auto;
         }
         .acrb-google-url-line {
@@ -477,9 +590,10 @@ function acrb_seo_tab(): void {
             background: #4f46e5;
             border-radius: 50%;
             display: inline-block;
+            flex-shrink: 0;
         }
         .acrb-google-title-text {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 400;
             color: #1a0dab;
             line-height: 1.3;
@@ -493,19 +607,21 @@ function acrb_seo_tab(): void {
         .acrb-google-desc-text {
             font-size: 13px;
             color: #4d5156;
-            line-height: 1.5;
+            line-height: 1.45;
             margin: 0;
             word-break: break-word;
         }
+
+        /* Social Share Card Preview */
         .acrb-social-preview-box {
             border: 1px solid #e2e8f0;
-            border-radius: 14px;
+            border-radius: 12px;
             overflow: hidden;
             background: #ffffff;
         }
         .acrb-social-preview-image {
             width: 100%;
-            height: 190px;
+            height: 180px;
             background-color: #f1f5f9;
             background-size: cover;
             background-position: center;
@@ -513,7 +629,7 @@ function acrb_seo_tab(): void {
             align-items: center;
             justify-content: center;
             color: #94a3b8;
-            font-size: 13px;
+            font-size: 12.5px;
             font-weight: 600;
         }
         .acrb-social-preview-body {
@@ -529,7 +645,7 @@ function acrb_seo_tab(): void {
             margin-bottom: 4px;
         }
         .acrb-social-preview-title {
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 700;
             color: #0f172a;
             margin-bottom: 4px;
@@ -546,17 +662,29 @@ function acrb_seo_tab(): void {
             overflow: hidden;
             line-height: 1.4;
         }
+
+        @media (max-width: 1024px) {
+            .acrb-seo-grid {
+                grid-template-columns: 1fr;
+            }
+            .acrb-seo-preview-sidebar {
+                position: static;
+            }
+        }
     </style>
 
-    <div class="wrap acrb-seo-wrap">
+    <div class="acrb-seo-wrap">
 
-        <div class="acrb-seo-header">
-            <div class="acrb-seo-title-group">
-                <h2>
+        <!-- Topbar Heading Banner -->
+        <header class="acrb-seo-topbar-header">
+            <div class="acrb-seo-topbar-title-group">
+                <div class="acrb-seo-topbar-icon">
                     <span class="dashicons dashicons-search"></span>
-                    <?php esc_html_e( 'SEO & Social Optimization', 'awesome-car-rental' ); ?>
-                </h2>
-                <p><?php esc_html_e( 'Configure metadata, social card distributions, Google SERP rendering, and automated Vehicle JSON-LD Schema.', 'awesome-car-rental' ); ?></p>
+                </div>
+                <div class="acrb-seo-topbar-meta">
+                    <h1><?php esc_html_e( 'SEO & Social Optimization', 'awesome-car-rental' ); ?></h1>
+                    <p><?php esc_html_e( 'Configure metadata, social card distributions, Google SERP rendering, and automated Vehicle JSON-LD Schema.', 'awesome-car-rental' ); ?></p>
+                </div>
             </div>
             <div class="acrb-seo-score-meter">
                 <div class="acrb-seo-score-circle" id="acrb_score_display">100</div>
@@ -565,10 +693,10 @@ function acrb_seo_tab(): void {
                     <span><?php esc_html_e( 'SEO Health Grade', 'awesome-car-rental' ); ?></span>
                 </div>
             </div>
-        </div>
+        </header>
 
-        <?php if ( $saved_notice ) : ?>
-            <div class="acrb-seo-alert">
+        <?php if ( isset( $_GET['updated'] ) && '1' === $_GET['updated'] ) : ?>
+            <div class="acrb-seo-alert-success">
                 <span class="dashicons dashicons-yes-alt"></span>
                 <span><?php esc_html_e( 'SEO and social parameters have been updated and synchronized.', 'awesome-car-rental' ); ?></span>
             </div>
@@ -581,6 +709,7 @@ function acrb_seo_tab(): void {
 
                 <div class="acrb-seo-main-col">
 
+                    <!-- Snippet Content Card -->
                     <div class="acrb-seo-card">
                         <h3 class="acrb-seo-card-title">
                             <span class="dashicons dashicons-admin-site-alt3"></span>
@@ -625,14 +754,18 @@ function acrb_seo_tab(): void {
                         </div>
 
                         <div class="acrb-seo-form-group">
-                            <label class="acrb-seo-label"><?php esc_html_e( 'Indexing Visibility', 'awesome-car-rental' ); ?></label>
-                            <select name="acrb_seo_robots_index" class="acrb-seo-select">
-                                <option value="index" <?php selected( $robots_index, 'index' ); ?>><?php esc_html_e( 'Index, Follow (Recommended - Allow search engines to index)', 'awesome-car-rental' ); ?></option>
-                                <option value="noindex" <?php selected( $robots_index, 'noindex' ); ?>><?php esc_html_e( 'Noindex, Nofollow (Prevent search engines from indexing)', 'awesome-car-rental' ); ?></option>
-                            </select>
+                            <label class="acrb-seo-label" for="acrb_seo_robots_index"><?php esc_html_e( 'Indexing Visibility', 'awesome-car-rental' ); ?></label>
+                            <div class="acrb-seo-select-wrap">
+                                <select id="acrb_seo_robots_index" name="acrb_seo_robots_index" class="acrb-seo-select">
+                                    <option value="index" <?php selected( $robots_index, 'index' ); ?>><?php esc_html_e( 'Index, Follow (Recommended - Allow search engines to index)', 'awesome-car-rental' ); ?></option>
+                                    <option value="noindex" <?php selected( $robots_index, 'noindex' ); ?>><?php esc_html_e( 'Noindex, Nofollow (Prevent search engines from indexing)', 'awesome-car-rental' ); ?></option>
+                                </select>
+                                <span class="dashicons dashicons-arrow-down-alt2 acrb-seo-select-arrow"></span>
+                            </div>
                         </div>
                     </div>
 
+                    <!-- Social Card Sharing Card -->
                     <div class="acrb-seo-card">
                         <h3 class="acrb-seo-card-title">
                             <span class="dashicons dashicons-share"></span>
@@ -641,7 +774,7 @@ function acrb_seo_tab(): void {
 
                         <div class="acrb-seo-form-group">
                             <div class="acrb-seo-label-row">
-                                <label class="acrb-seo-label"><?php esc_html_e( 'Default Share Banner (1200 x 630px)', 'awesome-car-rental' ); ?></label>
+                                <label class="acrb-seo-label" for="acrb_og_image_input"><?php esc_html_e( 'Default Share Banner (1200 x 630px)', 'awesome-car-rental' ); ?></label>
                             </div>
                             <div class="acrb-seo-media-row">
                                 <input 
@@ -650,25 +783,29 @@ function acrb_seo_tab(): void {
                                     name="acrb_seo_og_image" 
                                     class="acrb-seo-input" 
                                     value="<?php echo esc_url( $og_image ); ?>" 
-                                    placeholder="https://yourdomain.com/wp-content/uploads/og-banner.jpg" 
+                                    placeholder="<?php esc_attr_e( 'https://yourdomain.com/wp-content/uploads/og-banner.jpg', 'awesome-car-rental' ); ?>" 
                                 />
                                 <button type="button" class="acrb-seo-btn-media" id="acrb_media_uploader_btn">
                                     <span class="dashicons dashicons-upload"></span>
-                                    <?php esc_html_e( 'Media Library', 'awesome-car-rental' ); ?>
+                                    <span><?php esc_html_e( 'Media Library', 'awesome-car-rental' ); ?></span>
                                 </button>
                             </div>
                             <p class="acrb-seo-hint"><?php esc_html_e( 'Shown when rental links are posted to WhatsApp, Facebook, iMessage, and LinkedIn.', 'awesome-car-rental' ); ?></p>
                         </div>
 
                         <div class="acrb-seo-form-group">
-                            <label class="acrb-seo-label"><?php esc_html_e( 'Twitter / X Card Format', 'awesome-car-rental' ); ?></label>
-                            <select name="acrb_seo_twitter_card_type" class="acrb-seo-select">
-                                <option value="summary_large_image" <?php selected( $twitter_card_type, 'summary_large_image' ); ?>><?php esc_html_e( 'Summary with Large Image (Optimal for vehicle showcases)', 'awesome-car-rental' ); ?></option>
-                                <option value="summary" <?php selected( $twitter_card_type, 'summary' ); ?>><?php esc_html_e( 'Compact Thumbnail Summary', 'awesome-car-rental' ); ?></option>
-                            </select>
+                            <label class="acrb-seo-label" for="acrb_seo_twitter_card_type"><?php esc_html_e( 'Twitter / X Card Format', 'awesome-car-rental' ); ?></label>
+                            <div class="acrb-seo-select-wrap">
+                                <select id="acrb_seo_twitter_card_type" name="acrb_seo_twitter_card_type" class="acrb-seo-select">
+                                    <option value="summary_large_image" <?php selected( $twitter_card_type, 'summary_large_image' ); ?>><?php esc_html_e( 'Summary with Large Image (Optimal for vehicle showcases)', 'awesome-car-rental' ); ?></option>
+                                    <option value="summary" <?php selected( $twitter_card_type, 'summary' ); ?>><?php esc_html_e( 'Compact Thumbnail Summary', 'awesome-car-rental' ); ?></option>
+                                </select>
+                                <span class="dashicons dashicons-arrow-down-alt2 acrb-seo-select-arrow"></span>
+                            </div>
                         </div>
                     </div>
 
+                    <!-- Structured Data Card -->
                     <div class="acrb-seo-card">
                         <h3 class="acrb-seo-card-title">
                             <span class="dashicons dashicons-code-standards"></span>
@@ -700,12 +837,14 @@ function acrb_seo_tab(): void {
 
                     <div>
                         <button type="submit" class="acrb-seo-submit-btn">
-                            <?php esc_html_e( 'Save SEO Configuration', 'awesome-car-rental' ); ?>
+                            <span class="dashicons dashicons-saved"></span>
+                            <span><?php esc_html_e( 'Save SEO Configuration', 'awesome-car-rental' ); ?></span>
                         </button>
                     </div>
 
                 </div>
 
+                <!-- Preview Sidebar -->
                 <div class="acrb-seo-preview-sidebar">
 
                     <div class="acrb-seo-card">
@@ -737,7 +876,7 @@ function acrb_seo_tab(): void {
                                 <span id="acrb_social_placeholder"><?php esc_html_e( 'No Image Selected (1200x630)', 'awesome-car-rental' ); ?></span>
                             </div>
                             <div class="acrb-social-preview-body">
-                                <div class="acrb-social-preview-domain"><?php echo esc_html( wp_parse_url( home_url(), PHP_URL_HOST ) ); ?></div>
+                                <div class="acrb-social-preview-domain"><?php echo esc_html( (string) wp_parse_url( home_url(), PHP_URL_HOST ) ); ?></div>
                                 <div class="acrb-social-preview-title" id="acrb_social_title_preview"><?php echo esc_html( $meta_title ); ?></div>
                                 <div class="acrb-social-preview-desc" id="acrb_social_desc_preview"><?php echo esc_html( $meta_desc ); ?></div>
                             </div>
@@ -778,81 +917,89 @@ function acrb_seo_tab(): void {
 
             function updateAudits() {
                 let score = 100;
-                const rawTitle = titleInput.value.trim();
-                const rawDesc  = descInput.value.trim();
+                const rawTitle = titleInput ? titleInput.value.trim() : '';
+                const rawDesc  = descInput ? descInput.value.trim() : '';
 
                 const tLen = rawTitle.length;
-                titleCounter.textContent = tLen + ' / 60';
-                if (tLen < 30 || tLen > 65) {
-                    titleCounter.className = 'acrb-seo-counter limit-bad';
-                    score -= 25;
-                } else if (tLen < 45 || tLen > 60) {
-                    titleCounter.className = 'acrb-seo-counter limit-warn';
-                    score -= 10;
-                } else {
-                    titleCounter.className = 'acrb-seo-counter limit-good';
+                if (titleCounter) {
+                    titleCounter.textContent = tLen + ' / 60';
+                    if (tLen < 30 || tLen > 65) {
+                        titleCounter.className = 'acrb-seo-counter limit-bad';
+                        score -= 25;
+                    } else if (tLen < 45 || tLen > 60) {
+                        titleCounter.className = 'acrb-seo-counter limit-warn';
+                        score -= 10;
+                    } else {
+                        titleCounter.className = 'acrb-seo-counter limit-good';
+                    }
                 }
 
                 const dLen = rawDesc.length;
-                descCounter.textContent = dLen + ' / 160';
-                if (dLen < 70 || dLen > 175) {
-                    descCounter.className = 'acrb-seo-counter limit-bad';
-                    score -= 25;
-                } else if (dLen < 120 || dLen > 160) {
-                    descCounter.className = 'acrb-seo-counter limit-warn';
-                    score -= 10;
-                } else {
-                    descCounter.className = 'acrb-seo-counter limit-good';
+                if (descCounter) {
+                    descCounter.textContent = dLen + ' / 160';
+                    if (dLen < 70 || dLen > 175) {
+                        descCounter.className = 'acrb-seo-counter limit-bad';
+                        score -= 25;
+                    } else if (dLen < 120 || dLen > 160) {
+                        descCounter.className = 'acrb-seo-counter limit-warn';
+                        score -= 10;
+                    } else {
+                        descCounter.className = 'acrb-seo-counter limit-good';
+                    }
                 }
 
-                if (!imgInput.value.trim()) {
+                if (imgInput && !imgInput.value.trim()) {
                     score -= 20;
                 }
 
                 score = Math.max(0, score);
-                scoreDisplay.textContent = score;
-
-                if (score >= 85) {
-                    scoreDisplay.style.background = '#059669';
-                    scoreStatus.textContent = 'Excellent';
-                } else if (score >= 60) {
-                    scoreDisplay.style.background = '#d97706';
-                    scoreStatus.textContent = 'Acceptable';
-                } else {
-                    scoreDisplay.style.background = '#dc2626';
-                    scoreStatus.textContent = 'Action Needed';
+                if (scoreDisplay) {
+                    scoreDisplay.textContent = score;
+                    if (score >= 85) {
+                        scoreDisplay.style.background = '#059669';
+                        if (scoreStatus) scoreStatus.textContent = <?php echo wp_json_encode( __( 'Optimized', 'awesome-car-rental' ) ); ?>;
+                    } else if (score >= 60) {
+                        scoreDisplay.style.background = '#d97706';
+                        if (scoreStatus) scoreStatus.textContent = <?php echo wp_json_encode( __( 'Acceptable', 'awesome-car-rental' ) ); ?>;
+                    } else {
+                        scoreDisplay.style.background = '#dc2626';
+                        if (scoreStatus) scoreStatus.textContent = <?php echo wp_json_encode( __( 'Action Needed', 'awesome-car-rental' ) ); ?>;
+                    }
                 }
 
                 const parsedTitle = parseTokens(rawTitle || siteName + ' Car Rental');
                 const parsedDesc  = parseTokens(rawDesc || 'Browse our complete rental fleet.');
 
-                serpTitlePreview.textContent = parsedTitle;
-                socialTitlePreview.textContent = parsedTitle;
+                if (serpTitlePreview) serpTitlePreview.textContent = parsedTitle;
+                if (socialTitlePreview) socialTitlePreview.textContent = parsedTitle;
 
-                serpDescPreview.textContent = parsedDesc;
-                socialDescPreview.textContent = parsedDesc;
+                if (serpDescPreview) serpDescPreview.textContent = parsedDesc;
+                if (socialDescPreview) socialDescPreview.textContent = parsedDesc;
 
-                const imgUrl = imgInput.value.trim();
-                if (imgUrl) {
-                    socialImgPreview.style.backgroundImage = 'url(' + encodeURI(imgUrl) + ')';
-                    socialPlaceholder.style.display = 'none';
-                } else {
-                    socialImgPreview.style.backgroundImage = 'none';
-                    socialPlaceholder.style.display = 'inline';
+                const imgUrl = imgInput ? imgInput.value.trim() : '';
+                if (socialImgPreview && socialPlaceholder) {
+                    if (imgUrl) {
+                        socialImgPreview.style.backgroundImage = 'url(' + encodeURI(imgUrl) + ')';
+                        socialPlaceholder.style.display = 'none';
+                    } else {
+                        socialImgPreview.style.backgroundImage = 'none';
+                        socialPlaceholder.style.display = 'inline';
+                    }
                 }
             }
 
-            titleInput.addEventListener('input', updateAudits);
-            descInput.addEventListener('input', updateAudits);
-            imgInput.addEventListener('input', updateAudits);
+            if (titleInput) titleInput.addEventListener('input', updateAudits);
+            if (descInput) descInput.addEventListener('input', updateAudits);
+            if (imgInput) imgInput.addEventListener('input', updateAudits);
             updateAudits();
 
-            // Dynamic Token Buttons
+            // Dynamic Token Injector Buttons
             document.querySelectorAll('.acrb-seo-token-btn').forEach(function(btn) {
                 btn.addEventListener('click', function() {
-                    const targetInput = document.getElementById(this.getAttribute('data-target'));
+                    const targetId = this.getAttribute('data-target');
+                    const targetInput = targetId ? document.getElementById(targetId) : null;
                     const token = this.getAttribute('data-token');
-                    if (targetInput) {
+                    if (targetInput && token) {
                         targetInput.value += ' ' + token;
                         updateAudits();
                     }
@@ -864,26 +1011,28 @@ function acrb_seo_tab(): void {
             const btnDesktop = document.getElementById('acrb_btn_desktop');
             const btnMobile  = document.getElementById('acrb_btn_mobile');
 
-            btnDesktop.addEventListener('click', function() {
-                this.classList.add('active');
-                btnMobile.classList.remove('active');
-                googleBox.classList.remove('mobile');
-            });
+            if (btnDesktop && btnMobile && googleBox) {
+                btnDesktop.addEventListener('click', function() {
+                    this.classList.add('active');
+                    btnMobile.classList.remove('active');
+                    googleBox.classList.remove('mobile');
+                });
 
-            btnMobile.addEventListener('click', function() {
-                this.classList.add('active');
-                btnDesktop.classList.remove('active');
-                googleBox.classList.add('mobile');
-            });
+                btnMobile.addEventListener('click', function() {
+                    this.classList.add('active');
+                    btnDesktop.classList.remove('active');
+                    googleBox.classList.add('mobile');
+                });
+            }
 
-            // Native Media Uploader
+            // Native Media Uploader Integration
             const mediaBtn = document.getElementById('acrb_media_uploader_btn');
-            if (mediaBtn) {
+            if (mediaBtn && imgInput) {
                 mediaBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     const frame = wp.media({
-                        title: 'Select Social Share Image',
-                        button: { text: 'Use Image' },
+                        title: <?php echo wp_json_encode( __( 'Select Social Share Image', 'awesome-car-rental' ) ); ?>,
+                        button: { text: <?php echo wp_json_encode( __( 'Use Image', 'awesome-car-rental' ) ); ?> },
                         multiple: false
                     }).on('select', function() {
                         const attachment = frame.state().get('selection').first().toJSON();

@@ -27,6 +27,7 @@ $acrb_frontend_modules = array(
     'account/acrb-frontned-account.php',
     'single/acrb-frontned-car-single.php',
     'thanks/acrb-frontned-thanks.php',
+    'checkout/acrb-frontned-checkout.php',
 );
 
 // Safely load each module if it exists

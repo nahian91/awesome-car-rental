@@ -4,7 +4,7 @@
  * Location: admin/categories/categories-add-edit.php
  *
  * @package Awesome_Car_Rental
- * @since   2.4.9
+ * @since   2.5.2
  */
 
 declare( strict_types=1 );
@@ -65,25 +65,46 @@ $c_img  = $category['image'] ?? '';
         font-size: 13.5px;
         margin-bottom: 6px;
     }
+
+    /* Identical border, shape, and background for input & textarea */
     .acrb-cat-input,
     .acrb-cat-textarea {
-        width: 100%;
-        background: #f8fafc;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        padding: 10px 14px;
-        font-size: 13.5px;
-        color: #1e293b;
-        box-sizing: border-box;
-        transition: all 0.15s ease;
+        display: block;
+        width: 100% !important;
+        max-width: 100% !important;
+        background: #f8fafc !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        padding: 10px 14px !important;
+        font-size: 13.5px !important;
+        font-family: inherit !important;
+        color: #1e293b !important;
+        box-sizing: border-box !important;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
+    }
+    .acrb-cat-input {
+        height: 42px !important;
+        line-height: 20px !important;
+    }
+    .acrb-cat-textarea {
+        line-height: 1.5 !important;
+        resize: vertical;
+    }
+    .acrb-cat-input:hover,
+    .acrb-cat-textarea:hover {
+        border-color: #94a3b8 !important;
+        background: #ffffff !important;
     }
     .acrb-cat-input:focus,
     .acrb-cat-textarea:focus {
-        background: #ffffff;
-        border-color: #4f46e5;
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        background: #ffffff !important;
+        border-color: #4f46e5 !important;
+        outline: none !important;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
     }
+
+    /* Media Box */
     .acrb-media-preview-box {
         display: flex;
         align-items: center;
@@ -211,7 +232,6 @@ $c_img  = $category['image'] ?? '';
         <div class="acrb-cat-form-group">
             <label class="acrb-cat-label"><?php esc_html_e( 'Category Image', 'awesome-car-rental' ); ?></label>
             
-            <!-- Both ID and URL hidden inputs provided for full compatibility -->
             <input type="hidden" name="acrb_type_image_id" id="acrb_type_image_id" value="">
             <input type="hidden" name="acrb_type_image_url" id="acrb_type_image_url" value="<?php echo esc_url( $c_img ); ?>">
 

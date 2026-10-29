@@ -1,11 +1,13 @@
 <?php
 /**
- * Cars Sub-Navigation Tab Strip (`cars-tab.php`)
+ * Cars Sub-Navigation Tab Strip (`cars-tab.php` / `cars-tabs.php`)
  * Location: admin/cars/cars-tab.php
  *
  * @package Awesome_Car_Rental
- * @since   1.8.3
+ * @since   3.2.1
  */
+
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -16,30 +18,103 @@ $sub_state = isset( $_GET['sub'] ) ? sanitize_key( wp_unslash( $_GET['sub'] ) ) 
 $edit_id   = isset( $_GET['edit'] ) ? absint( wp_unslash( $_GET['edit'] ) ) : 0;
 $view_id   = isset( $_GET['view'] ) ? absint( wp_unslash( $_GET['view'] ) ) : 0;
 
-if ( $edit_id > 0 || $view_id > 0 ) {
+if ( $edit_id > 0 ) {
     $sub_state = 'edit';
+} elseif ( $view_id > 0 ) {
+    $sub_state = 'view';
 }
 
 $tabs = array(
     'list' => array(
-        'label' => __( 'All Cars', 'awesome-car-rental' ),
+        'label' => __( 'All Fleet Vehicles', 'awesome-car-rental' ),
         'icon'  => 'dashicons-car',
     ),
     'add'  => array(
-        'label' => __( 'Add New Car', 'awesome-car-rental' ),
+        'label' => __( 'Add New Vehicle', 'awesome-car-rental' ),
         'icon'  => 'dashicons-plus-alt2',
     ),
 );
 ?>
 
-<nav class="acrb-nav-wrapper">
+<style>
+    .acrb-cars-nav-wrapper {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 22px;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 16px;
+        flex-wrap: wrap;
+        box-sizing: border-box;
+    }
+    .acrb-cars-nav-wrapper *,
+    .acrb-cars-nav-wrapper *::before,
+    .acrb-cars-nav-wrapper *::after {
+        box-sizing: border-box;
+    }
+    .acrb-cars-nav-item {
+        background: #ffffff;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+        border-radius: 9px;
+        padding: 9px 16px;
+        font-weight: 600;
+        font-size: 13px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.15s ease;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+    }
+    .acrb-cars-nav-item .dashicons {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        color: #64748b;
+        transition: color 0.15s ease;
+    }
+    .acrb-cars-nav-item:hover {
+        background: #f8fafc;
+        color: #0f172a;
+        border-color: #cbd5e1;
+    }
+    .acrb-cars-nav-item:hover .dashicons {
+        color: #0f172a;
+    }
+    .acrb-cars-nav-item.is-active {
+        background: #eff6ff;
+        color: #4f46e5;
+        border-color: #c7d2fe;
+        box-shadow: 0 2px 6px rgba(79, 70, 229, 0.12);
+    }
+    .acrb-cars-nav-item.is-active .dashicons {
+        color: #4f46e5;
+    }
+    .acrb-cars-nav-label {
+        line-height: 1;
+    }
+</style>
+
+<nav class="acrb-cars-nav-wrapper">
     <?php foreach ( $tabs as $k => $data ) :
-        $url          = add_query_arg( array( 'page' => $page_slug, 'tab' => 'cars', 'sub' => $k ), admin_url( 'admin.php' ) );
-        $active_class = ( ( 'list' === $k && ( 'list' === $sub_state || 'edit' === $sub_state || 'view' === $sub_state ) ) || $sub_state === $k ) ? ' is-active' : '';
+        $url = add_query_arg(
+            array(
+                'page' => $page_slug,
+                'tab'  => 'cars',
+                'sub'  => $k,
+            ),
+            admin_url( 'admin.php' )
+        );
+
+        // Strip contextual item parameters when explicitly navigating tabs
+        $url = remove_query_arg( array( 'edit', 'view', 'car_id', 'created', 'updated', 'deleted' ), $url );
+
+        $is_active = ( 'list' === $k && in_array( $sub_state, array( 'list', 'edit', 'view' ), true ) ) || ( $sub_state === $k );
+        $active_class = $is_active ? ' is-active' : '';
     ?>
-        <a href="<?php echo esc_url( $url ); ?>" class="acrb-nav-item<?php echo esc_attr( $active_class ); ?>">
+        <a href="<?php echo esc_url( $url ); ?>" class="acrb-cars-nav-item<?php echo esc_attr( $active_class ); ?>">
             <span class="dashicons <?php echo esc_attr( $data['icon'] ); ?>"></span>
-            <span class="acrb-nav-label"><?php echo esc_html( $data['label'] ); ?></span>
+            <span class="acrb-cars-nav-label"><?php echo esc_html( $data['label'] ); ?></span>
         </a>
     <?php endforeach; ?>
 </nav>

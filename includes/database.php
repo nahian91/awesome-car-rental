@@ -108,12 +108,16 @@ function acrb_create_custom_tables(): void {
     // 5. Customers Table
     $sql_customers = "CREATE TABLE {$table_customers} (
         id mediumint(9) NOT NULL AUTO_INCREMENT,
+        user_id bigint(20) UNSIGNED DEFAULT 0,
         name varchar(255) NOT NULL,
         email varchar(255) DEFAULT '',
         phone varchar(100) DEFAULT '',
+        license_number varchar(100) DEFAULT '',
         address longtext DEFAULT '',
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id)
+        PRIMARY KEY  (id),
+        KEY email (email(191)),
+        KEY user_id (user_id)
     ) {$charset_collate};";
 
     // 6. Inspections Table (Condition Reports)
