@@ -1,11 +1,11 @@
 <?php
 /**
  * [acrb_thanks]
- * Ultra-Luxury Elite SaaS Order Confirmation & Receipt Page (Maximum Polish)
+ * Ultra-Luxury Elite SaaS Order Confirmation & Receipt Page with Beautiful Itemized Table
  * Location: templates/shortcodes/thanks.php (or shortcodes directory)
  *
  * @package Awesome_Car_Rental
- * @since   3.9.0
+ * @since   4.8.0
  */
 
 declare( strict_types=1 );
@@ -17,6 +17,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 add_shortcode( 'acrb_thanks', 'acrb_thank_you_page_shortcode' );
 
 function acrb_thank_you_page_shortcode(): string {
+    global $wpdb;
+    $table_bookings = $wpdb->prefix . 'dev_nahian_bookings';
+    $table_promos   = $wpdb->prefix . 'dev_nahian_promo_codes';
+
     $booking_id = isset( $_GET['booking_id'] ) ? absint( wp_unslash( $_GET['booking_id'] ) ) : 0; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
     // Fetch Dynamic Styling & Typography Tokens from Style Customizer
@@ -35,8 +39,14 @@ function acrb_thank_you_page_shortcode(): string {
     );
     $selected_font = $font_stacks[ $font_slug ] ?? $font_stacks['jakarta'];
 
-    // Validation
-    if ( ! $booking_id || 'acrb_bookings' !== get_post_type( $booking_id ) ) {
+    // Validation against Custom Table
+    $booking = null;
+    if ( $booking_id > 0 ) {
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $booking = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table_bookings} WHERE id = %d", $booking_id ), ARRAY_A );
+    }
+
+    if ( ! $booking ) {
         ob_start();
         ?>
         <style>
@@ -47,54 +57,55 @@ function acrb_thank_you_page_shortcode(): string {
                 --acrb-thanks-font: <?php echo esc_html( $selected_font ); ?>;
             }
             .acrb-error-container {
-                max-width: 620px;
-                margin: 80px auto;
+                max-width: 580px;
+                margin: 90px auto;
                 text-align: center;
-                padding: 56px 40px;
+                padding: 60px 40px;
                 background: #ffffff;
                 border: 1px solid #e2e8f0;
-                border-radius: 20px;
-                box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.05);
+                border-radius: 24px;
+                box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.07);
                 font-family: var(--acrb-thanks-font);
                 color: var(--acrb-thanks-text);
                 box-sizing: border-box;
             }
             .acrb-error-container h3 {
                 color: var(--acrb-thanks-text);
-                font-size: 22px;
+                font-size: 24px;
                 font-weight: 900;
-                margin: 0 0 10px;
-                letter-spacing: -0.02em;
+                margin: 0 0 12px;
+                letter-spacing: -0.03em;
             }
             .acrb-error-container p {
                 color: var(--acrb-thanks-secondary);
-                font-size: 14px;
-                margin: 0 0 28px;
+                font-size: 14.5px;
+                margin: 0 0 32px;
                 line-height: 1.6;
             }
             .acrb-btn-home {
                 display: inline-flex;
                 align-items: center;
-                gap: 8px;
+                gap: 10px;
                 text-decoration: none !important;
                 background: var(--acrb-thanks-primary);
                 color: #ffffff !important;
-                padding: 12px 26px;
-                border-radius: 10px;
+                padding: 14px 28px;
+                border-radius: 12px;
                 font-weight: 800;
                 font-size: 14px;
-                box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
-                transition: opacity 0.15s ease;
+                box-shadow: 0 8px 20px -4px rgba(79, 70, 229, 0.35);
+                transition: transform 0.15s ease, opacity 0.15s ease;
             }
             .acrb-btn-home:hover {
                 opacity: 0.92;
+                transform: translateY(-1px);
             }
         </style>
         <div class="acrb-error-container">
             <h3><?php esc_html_e( 'No Active Booking Found', 'awesome-car-rental' ); ?></h3>
             <p><?php esc_html_e( 'It looks like you reached this confirmation page directly without a valid reservation identifier.', 'awesome-car-rental' ); ?></p>
             <a href="<?php echo esc_url( home_url() ); ?>" class="acrb-btn-home">
-                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                     <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
                     <polyline points="9 22 9 12 15 12 15 22"></polyline>
                 </svg>
@@ -105,24 +116,61 @@ function acrb_thank_you_page_shortcode(): string {
         return ob_get_clean();
     }
 
-    // Fetch Data
-    $car_id     = get_post_meta( $booking_id, 'car_id', true );
-    $name       = get_post_meta( $booking_id, 'customer_name', true );
-    $email      = get_post_meta( $booking_id, 'customer_email', true );
-    $phone      = get_post_meta( $booking_id, 'customer_phone', true );
-    $pickup     = get_post_meta( $booking_id, 'pickup_date', true );
-    $return     = get_post_meta( $booking_id, 'return_date', true );
-    $p_loc      = get_post_meta( $booking_id, 'pickup_location', true );
-    $d_loc      = get_post_meta( $booking_id, 'return_location', true );
-    $total      = get_post_meta( $booking_id, 'total_price', true );
-    $method     = get_post_meta( $booking_id, 'payment_method', true );
-    
-    // Dynamic Currency
-    $currency = get_option( 'acrb_currency', '$' );
+    // Extract Record Fields from Database
+    $booking_code = $booking['booking_code'] ?? ( 'ACR-' . $booking_id );
+    $car_name     = $booking['car_name'] ?? __( 'Fleet Vehicle', 'awesome-car-rental' );
+    $name         = $booking['customer_name'] ?? __( 'Valued Guest', 'awesome-car-rental' );
+    $email        = $booking['customer_email'] ?? '';
+    $phone        = $booking['customer_phone'] ?? '';
+    $pickup       = $booking['pickup_date'] ?? ''; 
+    $return       = $booking['return_date'] ?? ''; 
+    $p_loc        = $booking['pickup_location'] ?? __( 'Main Terminal', 'awesome-car-rental' );
+    $d_loc        = $booking['return_location'] ?? __( 'Main Terminal', 'awesome-car-rental' );
+    $promo_code   = trim( (string) ( $booking['promo_code'] ?? '' ) );
+    $insurance_pl = trim( (string) ( $booking['insurance_plan'] ?? '' ) );
+    $border_pe    = trim( (string) ( $booking['border_permit'] ?? '' ) );
+    $total        = floatval( $booking['total_amount'] ?? 0 );
+    $method_raw   = $booking['payment_method'] ?? 'pay_later';
+    $status       = $booking['booking_status'] ?? 'pending';
 
-    // Calculations
-    $days = ceil( abs( strtotime( (string) $return ) - strtotime( (string) $pickup ) ) / 86400 );
-    $days = ( $days <= 0 ) ? 1 : (int) $days;
+    // Map Payment Method Key to Readable Label
+    $method_labels = array(
+        'pay_later' => __( 'Book Now, Pay Later', 'awesome-car-rental' ),
+        'bank'      => __( 'Direct Bank Transfer (BACS)', 'awesome-car-rental' ),
+        'cash'      => __( 'Cash on Pickup', 'awesome-car-rental' ),
+    );
+    $method = $method_labels[ $method_raw ] ?? ucwords( str_replace( '_', ' ', $method_raw ) );
+
+    // Dynamic Currency & Rental Unit
+    $currency    = get_option( 'acrb_currency', '£' );
+    $rental_unit = get_option( 'acrb_rental_unit', 'day' );
+
+    // Calculate rental duration in days
+    $days = 1;
+    if ( ! empty( $pickup ) && ! empty( $return ) ) {
+        try {
+            $start_dt = new DateTime( $pickup );
+            $end_dt   = new DateTime( $return );
+            $diff_hrs = ( $end_dt->getTimestamp() - $start_dt->getTimestamp() ) / 3600;
+            $days     = max( 1, (int) ceil( $diff_hrs / 24 ) );
+        } catch ( Exception $e ) {
+            $days = 1;
+        }
+    }
+
+    // Lookup Promo details if applied
+    $promo_display = '';
+    if ( ! empty( $promo_code ) ) {
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $p_record = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table_promos} WHERE code = %s", $promo_code ), ARRAY_A );
+        if ( $p_record ) {
+            $p_type = $p_record['discount_type'];
+            $p_val  = floatval( $p_record['discount_value'] );
+            $promo_display = $promo_code . ' (' . ( 'percentage' === $p_type ? $p_val . '%' : $currency . number_format( $p_val, 2 ) ) . ' OFF)';
+        } else {
+            $promo_display = $promo_code;
+        }
+    }
 
     ob_start();
     ?>
@@ -137,8 +185,8 @@ function acrb_thank_you_page_shortcode(): string {
         }
 
         .acrb-thanks-wrapper {
-            max-width: 760px;
-            margin: 50px auto;
+            max-width: 860px;
+            margin: 60px auto;
             font-family: var(--acrb-thanks-font);
             color: var(--acrb-thanks-text);
             box-sizing: border-box;
@@ -149,12 +197,11 @@ function acrb_thank_you_page_shortcode(): string {
             box-sizing: border-box;
         }
 
-        /* SVG Icon Standards */
         .acrb-thanks-icon {
             display: inline-block;
             width: 18px;
             height: 18px;
-            stroke-width: 2;
+            stroke-width: 2.2;
             stroke: currentColor;
             fill: none;
             stroke-linecap: round;
@@ -163,117 +210,110 @@ function acrb_thank_you_page_shortcode(): string {
         }
 
         .acrb-thanks-card {
-            padding: 48px;
+            padding: 56px;
             border: 1px solid #e2e8f0;
-            border-radius: 20px;
+            border-radius: 24px;
             background: #ffffff;
-            box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.05);
+            box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.07);
         }
         
         .acrb-thanks-header {
             text-align: center;
-            margin-bottom: 36px;
+            margin-bottom: 40px;
         }
         .acrb-success-icon {
             color: var(--acrb-thanks-accent);
-            margin-bottom: 16px;
+            margin-bottom: 20px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 72px;
-            height: 72px;
+            width: 80px;
+            height: 80px;
             background: #ecfdf5;
             border-radius: 50%;
             border: 1px solid #a7f3d0;
-            box-shadow: 0 4px 16px rgba(5, 150, 105, 0.1);
+            box-shadow: 0 8px 24px rgba(5, 150, 105, 0.12);
         }
         .acrb-success-icon .acrb-thanks-icon {
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
         }
         
         .acrb-thanks-title {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: 900;
             color: var(--acrb-thanks-text);
-            margin: 0 0 8px 0;
-            letter-spacing: -0.02em;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.03em;
         }
         .acrb-thanks-sub {
             color: var(--acrb-thanks-secondary);
-            font-size: 14.5px;
+            font-size: 15px;
             margin: 0;
             line-height: 1.6;
+        }
+        .acrb-thanks-sub strong {
+            color: var(--acrb-thanks-text);
         }
         
         .acrb-status-badge {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            margin-top: 18px;
-            padding: 6px 14px;
+            margin-top: 20px;
+            padding: 8px 16px;
             background: #fffbeb;
             border: 1px solid #fde68a;
             border-radius: 9999px;
             color: #b45309;
             font-weight: 800;
-            font-size: 12px;
+            font-size: 12.5px;
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
-        .acrb-status-badge .acrb-thanks-icon {
-            width: 15px;
-            height: 15px;
-        }
 
-        /* Luxury Summary Layout */
+        /* Summary Sections */
         .acrb-summary-box {
             background: #f8fafc;
             padding: 32px;
-            border-radius: 16px;
-            margin-bottom: 32px;
+            border-radius: 18px;
+            margin-bottom: 28px;
             border: 1px solid #e2e8f0;
         }
         .acrb-summary-title {
             margin: 0 0 20px 0;
-            font-size: 12px;
+            font-size: 12.5px;
             font-weight: 900;
             color: var(--acrb-thanks-secondary);
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.06em;
             border-bottom: 1px solid #e2e8f0;
             padding-bottom: 12px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
-        .acrb-summary-title .acrb-thanks-icon {
-            color: var(--acrb-thanks-primary);
-            width: 16px;
-            height: 16px;
-        }
 
         .acrb-receipt-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            margin-bottom: 24px;
+            gap: 16px;
         }
         .acrb-receipt-node {
             background: #ffffff;
             border: 1px solid #e2e8f0;
-            padding: 16px;
+            padding: 16px 18px;
             border-radius: 12px;
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
         .acrb-receipt-lbl {
-            font-size: 11.5px;
-            font-weight: 700;
+            font-size: 11px;
+            font-weight: 800;
             color: var(--acrb-thanks-secondary);
             text-transform: uppercase;
-            letter-spacing: 0.03em;
+            letter-spacing: 0.04em;
         }
         .acrb-receipt-val {
             font-size: 14.5px;
@@ -281,22 +321,73 @@ function acrb_thank_you_page_shortcode(): string {
             color: var(--acrb-thanks-text);
         }
 
+        /* Nice Itemized Table Styles */
+        .acrb-table-container {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
+        }
+        .acrb-breakdown-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .acrb-breakdown-table thead th {
+            background: #f1f5f9;
+            color: var(--acrb-thanks-secondary);
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 12px 18px;
+            text-align: left;
+        }
+        .acrb-breakdown-table thead th:last-child {
+            text-align: right;
+        }
+        .acrb-breakdown-table tr td {
+            padding: 16px 18px;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 13.5px;
+            color: #334155;
+            font-weight: 600;
+            vertical-align: middle;
+        }
+        .acrb-breakdown-table tr:last-child td {
+            border-bottom: none;
+        }
+        .acrb-breakdown-table tr td:last-child {
+            text-align: right;
+            font-weight: 900;
+            color: var(--acrb-thanks-text);
+        }
+        .acrb-item-sub {
+            display: block;
+            font-size: 11.5px;
+            color: var(--acrb-thanks-secondary);
+            font-weight: 500;
+            margin-top: 3px;
+        }
+
         .acrb-receipt-total-bar {
             background: #ffffff;
-            border: 1px solid #cbd5e1;
-            padding: 18px 22px;
-            border-radius: 12px;
+            border: 1.5px solid #cbd5e1;
+            padding: 20px 24px;
+            border-radius: 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.02);
         }
         .acrb-receipt-total-lbl {
-            font-size: 15px;
-            font-weight: 800;
+            font-size: 16px;
+            font-weight: 900;
             color: var(--acrb-thanks-text);
         }
         .acrb-receipt-total-val {
-            font-size: 24px;
+            font-size: 26px;
             font-weight: 900;
             color: var(--acrb-thanks-primary);
             letter-spacing: -0.02em;
@@ -315,7 +406,7 @@ function acrb_thank_you_page_shortcode(): string {
         .acrb-action-buttons {
             display: flex;
             justify-content: center;
-            gap: 12px;
+            gap: 14px;
             flex-wrap: wrap;
         }
         .acrb-btn-action {
@@ -323,8 +414,8 @@ function acrb_thank_you_page_shortcode(): string {
             background: #ffffff;
             border: 1.5px solid #cbd5e1;
             color: var(--acrb-thanks-text);
-            padding: 12px 22px;
-            border-radius: 10px;
+            padding: 12px 24px;
+            border-radius: 12px;
             font-weight: 800;
             font-size: 13.5px;
             display: inline-flex;
@@ -338,19 +429,17 @@ function acrb_thank_you_page_shortcode(): string {
             background: #f8fafc;
             border-color: var(--acrb-thanks-primary);
             color: var(--acrb-thanks-primary);
+            transform: translateY(-1px);
         }
         .acrb-btn-action.primary {
             background: var(--acrb-thanks-primary);
             border-color: var(--acrb-thanks-primary);
             color: #ffffff !important;
-            box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25);
+            box-shadow: 0 8px 20px -4px rgba(79, 70, 229, 0.35);
         }
         .acrb-btn-action.primary:hover {
             opacity: 0.92;
-        }
-        .acrb-btn-action .acrb-thanks-icon {
-            width: 16px;
-            height: 16px;
+            transform: translateY(-1px);
         }
 
         .acrb-support-link {
@@ -400,7 +489,7 @@ function acrb_thank_you_page_shortcode(): string {
                 margin: 20px;
             }
             .acrb-thanks-card {
-                padding: 28px;
+                padding: 32px 20px;
             }
             .acrb-receipt-grid {
                 grid-template-columns: 1fr;
@@ -413,64 +502,147 @@ function acrb_thank_you_page_shortcode(): string {
             <div class="acrb-thanks-header">
                 <div class="acrb-success-icon">
                     <svg class="acrb-thanks-icon" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
+                        <path d="M22 11.08V12a10 10 0 11-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
                     </svg>
                 </div>
-                <h1 class="acrb-thanks-title"><?php esc_html_e( 'Reservation Request Received!', 'awesome-car-rental' ); ?></h1>
+                <h1 class="acrb-thanks-title"><?php esc_html_e( 'Reservation Confirmed!', 'awesome-car-rental' ); ?></h1>
                 <p class="acrb-thanks-sub">
                     <?php
                     /* translators: %s: Customer name */
-                    $greeting_msg = sprintf( esc_html__( 'Thank you, %s. Your booking has been successfully logged into our system.', 'awesome-car-rental' ), esc_html( (string) $name ) );
+                    $greeting_msg = sprintf( esc_html__( 'Thank you, %s. Your reservation has been successfully processed and logged.', 'awesome-car-rental' ), '<strong>' . esc_html( (string) $name ) . '</strong>' );
                     echo wp_kses_post( $greeting_msg );
                     ?>
                 </p>
                 <div class="acrb-status-badge">
-                    <svg class="acrb-thanks-icon" viewBox="0 0 24 24">
-                        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path>
-                        <line x1="12" y1="9" x2="12" y2="13"></line>
-                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                    <span><?php esc_html_e( 'Status: Pending Fleet Confirmation', 'awesome-car-rental' ); ?></span>
+                    <span><?php esc_html_e( 'Status: Pending Fleet Verification', 'awesome-car-rental' ); ?></span>
                 </div>
             </div>
 
+            <!-- Customer & Booking Info Summary Box -->
             <div class="acrb-summary-box">
                 <h3 class="acrb-summary-title">
-                    <svg class="acrb-thanks-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    <span><?php esc_html_e( 'Official Reservation Receipt', 'awesome-car-rental' ); ?></span>
+                    📋 <?php esc_html_e( 'Reservation & Guest Details', 'awesome-car-rental' ); ?>
                 </h3>
-
                 <div class="acrb-receipt-grid">
                     <div class="acrb-receipt-node">
                         <span class="acrb-receipt-lbl"><?php esc_html_e( 'Booking Reference', 'awesome-car-rental' ); ?></span>
-                        <span class="acrb-receipt-val">#<?php echo absint( $booking_id ); ?></span>
+                        <span class="acrb-receipt-val" style="color: var(--acrb-thanks-primary);"><?php echo esc_html( $booking_code ); ?></span>
                     </div>
                     <div class="acrb-receipt-node">
-                        <span class="acrb-receipt-lbl"><?php esc_html_e( 'Vehicle Model', 'awesome-car-rental' ); ?></span>
-                        <span class="acrb-receipt-val"><?php echo esc_html( get_the_title( (int) $car_id ) ); ?></span>
+                        <span class="acrb-receipt-lbl"><?php esc_html_e( 'Selected Payment Method', 'awesome-car-rental' ); ?></span>
+                        <span class="acrb-receipt-val">💳 <?php echo esc_html( $method ); ?></span>
                     </div>
                     <div class="acrb-receipt-node">
-                        <span class="acrb-receipt-lbl"><?php esc_html_e( 'Rental Duration', 'awesome-car-rental' ); ?></span>
-                        <span class="acrb-receipt-val"><?php echo absint( $days ); ?> <?php esc_html_e( 'Days', 'awesome-car-rental' ); ?></span>
+                        <span class="acrb-receipt-lbl"><?php esc_html_e( 'Registered Guest Name', 'awesome-car-rental' ); ?></span>
+                        <span class="acrb-receipt-val"><?php echo esc_html( $name ); ?></span>
                     </div>
                     <div class="acrb-receipt-node">
-                        <span class="acrb-receipt-lbl"><?php esc_html_e( 'Payment Method', 'awesome-car-rental' ); ?></span>
-                        <span class="acrb-receipt-val" style="text-transform: capitalize;"><?php echo esc_html( str_replace( '_', ' ', (string) $method ) ); ?></span>
+                        <span class="acrb-receipt-lbl"><?php esc_html_e( 'Contact Email / Phone', 'awesome-car-rental' ); ?></span>
+                        <span class="acrb-receipt-val" style="font-size: 13px;"><?php echo esc_html( $email ); ?> <br><span style="color:var(--acrb-thanks-secondary); font-weight:600;"><?php echo esc_html( $phone ?: __( 'No phone provided', 'awesome-car-rental' ) ); ?></span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Itinerary Summary Box with Exact Times -->
+            <div class="acrb-summary-box">
+                <h3 class="acrb-summary-title">
+                    📍 <?php esc_html_e( 'Travel Itinerary & Schedule', 'awesome-car-rental' ); ?>
+                </h3>
+                <div class="acrb-receipt-grid">
+                    <div class="acrb-receipt-node">
+                        <span class="acrb-receipt-lbl"><?php esc_html_e( 'Pickup Date & Time', 'awesome-car-rental' ); ?></span>
+                        <span class="acrb-receipt-val" style="font-size: 13.5px;"><?php echo esc_html( $pickup ); ?> <span class="acrb-item-sub">(<?php echo esc_html( $p_loc ); ?>)</span></span>
                     </div>
                     <div class="acrb-receipt-node">
-                        <span class="acrb-receipt-lbl"><?php esc_html_e( 'Pickup Schedule', 'awesome-car-rental' ); ?></span>
-                        <span class="acrb-receipt-val" style="font-size: 13px;"><?php echo esc_html( $pickup ); ?> <span style="font-weight:600; color:var(--acrb-thanks-secondary); font-size:11px;">(<?php echo esc_html( $p_loc ?: 'Main Terminal' ); ?>)</span></span>
+                        <span class="acrb-receipt-lbl"><?php esc_html_e( 'Return Date & Time', 'awesome-car-rental' ); ?></span>
+                        <span class="acrb-receipt-val" style="font-size: 13.5px;"><?php echo esc_html( $return ); ?> <span class="acrb-item-sub">(<?php echo esc_html( $d_loc ); ?>)</span></span>
                     </div>
-                    <div class="acrb-receipt-node">
-                        <span class="acrb-receipt-lbl"><?php esc_html_e( 'Return Schedule', 'awesome-car-rental' ); ?></span>
-                        <span class="acrb-receipt-val" style="font-size: 13px;"><?php echo esc_html( $return ); ?> <span style="font-weight:600; color:var(--acrb-thanks-secondary); font-size:11px;">(<?php echo esc_html( $d_loc ?: 'Main Terminal' ); ?>)</span></span>
-                    </div>
+                </div>
+            </div>
+
+            <!-- Nicely Styled Itemized Financial Breakdown Box -->
+            <div class="acrb-summary-box">
+                <h3 class="acrb-summary-title">
+                    💰 <?php esc_html_e( 'Itemized Financial Breakdown', 'awesome-car-rental' ); ?>
+                </h3>
+
+                <div class="acrb-table-container">
+                    <table class="acrb-breakdown-table">
+                        <thead>
+                            <tr>
+                                <th><?php esc_html_e( 'Item Description', 'awesome-car-rental' ); ?></th>
+                                <th><?php esc_html_e( 'Amount / Status', 'awesome-car-rental' ); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #eef2ff; color: var(--acrb-thanks-primary); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0;">🚗</div>
+                                        <div>
+                                            <span style="font-weight: 800; color: var(--acrb-thanks-text);"><?php echo esc_html( $car_name ); ?></span>
+                                            <span class="acrb-item-sub"><?php echo absint( $days ); ?> <?php echo esc_html( ucfirst( $rental_unit ) ); ?>(s) rental duration</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><?php echo esc_html( $currency . number_format( $total, 2 ) ); ?></td>
+                            </tr>
+
+                            <?php if ( ! empty( $insurance_pl ) ) : ?>
+                            <tr>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #eef2ff; color: var(--acrb-thanks-primary); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0;">🛡️</div>
+                                        <div>
+                                            <span style="font-weight: 800; color: var(--acrb-thanks-text);"><?php echo esc_html( $insurance_pl ); ?></span>
+                                            <span class="acrb-item-sub"><?php esc_html_e( 'Coverage Protection Plan', 'awesome-car-rental' ); ?></span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="color: var(--acrb-thanks-primary);"><?php esc_html_e( 'Included', 'awesome-car-rental' ); ?></td>
+                            </tr>
+                            <?php endif; ?>
+
+                            <?php if ( ! empty( $border_pe ) ) : ?>
+                            <tr>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #eef2ff; color: var(--acrb-thanks-primary); display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0;">🌐</div>
+                                        <div>
+                                            <span style="font-weight: 800; color: var(--acrb-thanks-text);"><?php echo esc_html( $border_pe ); ?> Permit</span>
+                                            <span class="acrb-item-sub"><?php esc_html_e( 'Cross-Border Travel Permit', 'awesome-car-rental' ); ?></span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="color: var(--acrb-thanks-primary);"><?php esc_html_e( 'Included', 'awesome-car-rental' ); ?></td>
+                            </tr>
+                            <?php endif; ?>
+
+                            <?php if ( ! empty( $promo_display ) ) : ?>
+                            <tr>
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <div style="width: 28px; height: 28px; border-radius: 8px; background: #ecfdf5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0;">🏷️</div>
+                                        <div>
+                                            <span style="font-weight: 800; color: var(--acrb-thanks-accent);"><?php esc_html_e( 'Promo Code Voucher', 'awesome-car-rental' ); ?></span>
+                                            <span class="acrb-item-sub"><?php echo esc_html( $promo_display ); ?></span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="color: var(--acrb-thanks-accent); font-weight: 900;"><?php esc_html_e( 'Applied', 'awesome-car-rental' ); ?></td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
 
                 <div class="acrb-receipt-total-bar">
-                    <span class="acrb-receipt-total-lbl"><?php esc_html_e( 'Total Amount Due', 'awesome-car-rental' ); ?></span>
-                    <span class="acrb-receipt-total-val"><?php echo esc_html( $currency . number_format( floatval( $total ), 2 ) ); ?></span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="acrb-receipt-total-lbl"><?php esc_html_e( 'Total Amount Due', 'awesome-car-rental' ); ?></span>
+                        <span style="font-size: 12px; font-weight: 800; color: var(--acrb-thanks-secondary); background: #f1f5f9; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1;"><?php echo esc_html( $method ); ?></span>
+                    </div>
+                    <span class="acrb-receipt-total-val"><?php echo esc_html( $currency . number_format( $total, 2 ) ); ?></span>
                 </div>
             </div>
 

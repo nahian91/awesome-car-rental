@@ -20,7 +20,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 $acrb_frontend_modules = array(
     'auth/acrb-frontend-auth.php',
     'cars/acrb-frontend-cars.php',
-    'cars/acrb-frontend-cars-grid.php',
     'login/acrb-frontend-login.php',
     'registration/acrb-frontend-register.php',
     'search/acrb-frontend-search-form.php',

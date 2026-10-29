@@ -5,7 +5,7 @@
  * Location: admin/calendar.php
  *
  * @package Awesome_Car_Rental
- * @since   3.1.6
+ * @since   4.8.0
  */
 
 declare( strict_types=1 );
@@ -20,120 +20,85 @@ if ( ! current_user_can( 'manage_options' ) ) {
 
 global $wpdb;
 
-$table_bookings = $wpdb->prefix . 'dev_nahian_bookings';
+$acrb_table_bookings = $wpdb->prefix . 'dev_nahian_bookings';
+$acrb_table_cars     = $wpdb->prefix . 'dev_nahian_cars';
 
-// Resolve selected year and vehicle filter
-$cal_year_param = isset( $_GET['cal_year'] ) ? absint( wp_unslash( $_GET['cal_year'] ) ) : (int) gmdate( 'Y' );
-$current_year   = ( $cal_year_param >= 2020 && $cal_year_param <= 2040 ) ? $cal_year_param : (int) gmdate( 'Y' );
-$selected_car   = isset( $_GET['car_id'] ) ? absint( wp_unslash( $_GET['car_id'] ) ) : 0;
+// Resolve selected year and vehicle filter (read-only query parameters).
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+$acrb_cal_year_param = isset( $_GET['cal_year'] ) ? absint( wp_unslash( $_GET['cal_year'] ) ) : (int) gmdate( 'Y' );
+$acrb_current_year   = ( $acrb_cal_year_param >= 2020 && $acrb_cal_year_param <= 2040 ) ? $acrb_cal_year_param : (int) gmdate( 'Y' );
 
-$year_start = sprintf( '%04d-01-01', $current_year );
-$year_end   = sprintf( '%04d-12-31', $current_year );
-$today_str  = gmdate( 'Y-m-d' );
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+$acrb_selected_car   = isset( $_GET['car_id'] ) ? absint( wp_unslash( $_GET['car_id'] ) ) : 0;
 
-// 1. Fetch Fleet Vehicles for the Filter Dropdown
-$car_posts = get_posts( array(
-    'post_type'   => 'acrb_cars',
-    'numberposts' => -1,
-    'post_status' => 'publish',
-    'orderby'     => 'title',
-    'order'       => 'ASC',
-) );
+$acrb_year_start = sprintf( '%04d-01-01', $acrb_current_year );
+$acrb_year_end   = sprintf( '%04d-12-31', $acrb_current_year );
+$acrb_today_str  = gmdate( 'Y-m-d' );
 
-$cars = array();
-if ( ! empty( $car_posts ) ) {
-    foreach ( $car_posts as $cp ) {
-        $c_id       = absint( $cp->ID );
-        $c_title    = esc_html( $cp->post_title );
-        $terms      = wp_get_post_terms( $c_id, 'acrb_categories', array( 'fields' => 'names' ) );
-        $meta_brand = get_post_meta( $c_id, 'brand', true );
-        $brand      = ( ! empty( $terms ) && ! is_wp_error( $terms ) ) ? esc_html( $terms[0] ) : ( ! empty( $meta_brand ) ? esc_html( $meta_brand ) : __( 'Fleet Vehicle', 'awesome-car-rental' ) );
+// 1. Fetch All Fleet Vehicles from Custom Table for the Filter Dropdown.
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+$acrb_db_cars = $wpdb->get_results( "SELECT id, name, brand FROM {$acrb_table_cars} WHERE status != 'retired' ORDER BY brand ASC, name ASC", ARRAY_A );
 
-        $cars[] = array(
-            'id'    => $c_id,
-            'name'  => $c_title,
-            'brand' => $brand,
+$acrb_cars = array();
+if ( ! empty( $acrb_db_cars ) ) {
+    foreach ( $acrb_db_cars as $acrb_c ) {
+        $acrb_cars[] = array(
+            'id'    => absint( $acrb_c['id'] ),
+            'name'  => esc_html( $acrb_c['name'] ),
+            'brand' => esc_html( $acrb_c['brand'] ?? __( 'Fleet Vehicle', 'awesome-car-rental' ) ),
         );
     }
 }
 
-// 2. Fetch Active Bookings Overlapping with This Year
-$cpt_bookings = get_posts( array(
-    'post_type'   => 'acrb_bookings',
-    'numberposts' => -1,
-    'post_status' => 'publish',
-) );
+// 2. Fetch Active Bookings Overlapping with This Year from Custom Table.
+$acrb_raw_intervals = array();
 
-$raw_intervals = array();
+$acrb_bookings_query = "SELECT pickup_date, return_date FROM {$acrb_table_bookings} 
+                        WHERE (pickup_date <= %s AND return_date >= %s) 
+                        AND booking_status != 'cancelled'";
+$acrb_query_args     = array( $acrb_year_end, $acrb_year_start );
 
-if ( ! empty( $cpt_bookings ) ) {
-    foreach ( $cpt_bookings as $cb ) {
-        $b_id     = $cb->ID;
-        $b_car_id = absint( get_post_meta( $b_id, 'car_id', true ) );
-        $p_date   = (string) get_post_meta( $b_id, 'pickup_date', true );
-        $r_date   = (string) get_post_meta( $b_id, 'return_date', true );
-        $b_status = (string) ( get_post_meta( $b_id, 'status', true ) ?: 'pending' );
+if ( $acrb_selected_car > 0 ) {
+    $acrb_bookings_query .= ' AND car_id = %d';
+    $acrb_query_args[]    = $acrb_selected_car;
+}
 
-        if ( 'cancelled' !== $b_status && ! empty( $p_date ) && ! empty( $r_date ) ) {
-            if ( $p_date <= $year_end && $r_date >= $year_start ) {
-                if ( 0 === $selected_car || $selected_car === $b_car_id ) {
-                    $raw_intervals[] = array(
-                        'start' => max( $p_date, $year_start ),
-                        'end'   => min( $r_date, $year_end ),
-                    );
-                }
-            }
-        }
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+$acrb_db_bookings = $wpdb->get_results( $wpdb->prepare( $acrb_bookings_query, ...$acrb_query_args ), ARRAY_A );
+
+if ( ! empty( $acrb_db_bookings ) ) {
+    foreach ( $acrb_db_bookings as $acrb_dbb ) {
+        $acrb_raw_intervals[] = array(
+            'start' => max( (string) $acrb_dbb['pickup_date'], $acrb_year_start ),
+            'end'   => min( (string) $acrb_dbb['return_date'], $acrb_year_end ),
+        );
     }
-} else {
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-    $bookings_query = "SELECT pickup_date, return_date FROM {$table_bookings} 
-                       WHERE (pickup_date <= %s AND return_date >= %s) 
-                       AND booking_status != 'cancelled'";
-    $query_args     = array( $year_end, $year_start );
+}
 
-    if ( $selected_car > 0 ) {
-        $bookings_query .= ' AND car_id = %d';
-        $query_args[]    = $selected_car;
-    }
-
-    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-    $db_bookings = $wpdb->get_results( $wpdb->prepare( $bookings_query, ...$query_args ), ARRAY_A );
-
-    if ( ! empty( $db_bookings ) ) {
-        foreach ( $db_bookings as $dbb ) {
-            $raw_intervals[] = array(
-                'start' => max( (string) $dbb['pickup_date'], $year_start ),
-                'end'   => min( (string) $dbb['return_date'], $year_end ),
-            );
+// 3. Build a fast O(1) hash map of booked day strings (YYYY-MM-DD).
+$acrb_booked_days_map = array();
+foreach ( $acrb_raw_intervals as $acrb_interval ) {
+    $acrb_cur = strtotime( $acrb_interval['start'] );
+    $acrb_end = strtotime( $acrb_interval['end'] );
+    if ( $acrb_cur && $acrb_end ) {
+        while ( $acrb_cur <= $acrb_end ) {
+            $acrb_booked_days_map[ gmdate( 'Y-m-d', $acrb_cur ) ] = true;
+            $acrb_cur += 86400;
         }
     }
 }
 
-// 3. Build a fast O(1) hash map of booked day strings (YYYY-MM-DD)
-$booked_days_map = array();
-foreach ( $raw_intervals as $interval ) {
-    $cur = strtotime( $interval['start'] );
-    $end = strtotime( $interval['end'] );
-    if ( $cur && $end ) {
-        while ( $cur <= $end ) {
-            $booked_days_map[ gmdate( 'Y-m-d', $cur ) ] = true;
-            $cur += 86400;
-        }
-    }
+// 4. Compute Year Jump Links.
+$acrb_prev_year_val     = $acrb_current_year - 1;
+$acrb_next_year_val     = $acrb_current_year + 1;
+$acrb_base_calendar_url = admin_url( 'admin.php?page=awesome_car_rental&tab=calendar' );
+
+if ( $acrb_selected_car > 0 ) {
+    $acrb_base_calendar_url = add_query_arg( 'car_id', $acrb_selected_car, $acrb_base_calendar_url );
 }
 
-// 4. Compute Year Jump Links
-$prev_year_val     = $current_year - 1;
-$next_year_val     = $current_year + 1;
-$base_calendar_url = admin_url( 'admin.php?page=awesome_car_rental&tab=calendar' );
-
-if ( $selected_car > 0 ) {
-    $base_calendar_url = add_query_arg( 'car_id', $selected_car, $base_calendar_url );
-}
-
-$prev_year_url = add_query_arg( 'cal_year', $prev_year_val, $base_calendar_url );
-$next_year_url = add_query_arg( 'cal_year', $next_year_val, $base_calendar_url );
+$acrb_prev_year_url = add_query_arg( 'cal_year', $acrb_prev_year_val, $acrb_base_calendar_url );
+$acrb_next_year_url = add_query_arg( 'cal_year', $acrb_next_year_val, $acrb_base_calendar_url );
 ?>
 
 <style>
@@ -241,7 +206,7 @@ $next_year_url = add_query_arg( 'cal_year', $next_year_val, $base_calendar_url )
         box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
     }
     .acrb-cal-select-car {
-        min-width: 210px;
+        min-width: 220px;
     }
     .acrb-cal-select-year {
         width: 104px;
@@ -447,7 +412,12 @@ $next_year_url = add_query_arg( 'cal_year', $next_year_val, $base_calendar_url )
             </div>
             <div class="acrb-cal-topbar-meta">
                 <h1><?php esc_html_e( 'Fleet Availability Full Year Matrix', 'awesome-car-rental' ); ?></h1>
-                <p><?php printf( esc_html__( 'Displaying all 12 months for year %d with live reservation tracking.', 'awesome-car-rental' ), absint( $current_year ) ); ?></p>
+                <p>
+                    <?php
+                    /* translators: %d: Selected calendar year */
+                    printf( esc_html__( 'Displaying all 12 months for year %d with live reservation tracking.', 'awesome-car-rental' ), absint( $acrb_current_year ) );
+                    ?>
+                </p>
             </div>
         </div>
 
@@ -460,10 +430,10 @@ $next_year_url = add_query_arg( 'cal_year', $next_year_val, $base_calendar_url )
                 <div class="acrb-cal-select-wrap">
                     <select name="car_id" class="acrb-cal-select acrb-cal-select-car" onchange="this.form.submit()">
                         <option value="0"><?php esc_html_e( 'All Fleet Vehicles', 'awesome-car-rental' ); ?></option>
-                        <?php if ( ! empty( $cars ) ) : ?>
-                            <?php foreach ( $cars as $c ) : ?>
-                                <option value="<?php echo absint( $c['id'] ); ?>" <?php selected( $selected_car, $c['id'] ); ?>>
-                                    <?php echo esc_html( $c['name'] . ( ! empty( $c['brand'] ) ? ' (' . $c['brand'] . ')' : '' ) ); ?>
+                        <?php if ( ! empty( $acrb_cars ) ) : ?>
+                            <?php foreach ( $acrb_cars as $acrb_c ) : ?>
+                                <option value="<?php echo absint( $acrb_c['id'] ); ?>" <?php selected( $acrb_selected_car, $acrb_c['id'] ); ?>>
+                                    <?php echo esc_html( ( ! empty( $acrb_c['brand'] ) ? $acrb_c['brand'] . ' ' : '' ) . $acrb_c['name'] ); ?>
                                 </option>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -475,11 +445,11 @@ $next_year_url = add_query_arg( 'cal_year', $next_year_val, $base_calendar_url )
                 <div class="acrb-cal-select-wrap">
                     <select name="cal_year" class="acrb-cal-select acrb-cal-select-year" onchange="this.form.submit()">
                         <?php 
-                        $cur_cal_year = (int) gmdate( 'Y' );
-                        for ( $y = $cur_cal_year - 2; $y <= $cur_cal_year + 5; $y++ ) : 
+                        $acrb_cur_cal_year = (int) gmdate( 'Y' );
+                        for ( $acrb_y = $acrb_cur_cal_year - 2; $acrb_y <= $acrb_cur_cal_year + 5; $acrb_y++ ) : 
                         ?>
-                            <option value="<?php echo absint( $y ); ?>" <?php selected( $current_year, $y ); ?>>
-                                <?php echo absint( $y ); ?>
+                            <option value="<?php echo absint( $acrb_y ); ?>" <?php selected( $acrb_current_year, $acrb_y ); ?>>
+                                <?php echo absint( $acrb_y ); ?>
                             </option>
                         <?php endfor; ?>
                     </select>
@@ -489,9 +459,9 @@ $next_year_url = add_query_arg( 'cal_year', $next_year_val, $base_calendar_url )
 
             <!-- Year Jump Navigation -->
             <div class="acrb-year-jump-group">
-                <a href="<?php echo esc_url( $prev_year_url ); ?>" class="acrb-year-jump-btn" title="<?php esc_attr_e( 'Previous Year', 'awesome-car-rental' ); ?>">&larr; <?php echo absint( $prev_year_val ); ?></a>
-                <span class="acrb-year-current-label"><?php echo absint( $current_year ); ?></span>
-                <a href="<?php echo esc_url( $next_year_url ); ?>" class="acrb-year-jump-btn" title="<?php esc_attr_e( 'Next Year', 'awesome-car-rental' ); ?>"><?php echo absint( $next_year_val ); ?> &rarr;</a>
+                <a href="<?php echo esc_url( $acrb_prev_year_url ); ?>" class="acrb-year-jump-btn" title="<?php esc_attr_e( 'Previous Year', 'awesome-car-rental' ); ?>">&larr; <?php echo absint( $acrb_prev_year_val ); ?></a>
+                <span class="acrb-year-current-label"><?php echo absint( $acrb_current_year ); ?></span>
+                <a href="<?php echo esc_url( $acrb_next_year_url ); ?>" class="acrb-year-jump-btn" title="<?php esc_attr_e( 'Next Year', 'awesome-car-rental' ); ?>"><?php echo absint( $acrb_next_year_val ); ?> &rarr;</a>
             </div>
         </div>
     </header>
@@ -499,7 +469,7 @@ $next_year_url = add_query_arg( 'cal_year', $next_year_val, $base_calendar_url )
     <!-- 12-Month Grid Matrix -->
     <div class="acrb-months-matrix">
         <?php 
-        $days_short = array(
+        $acrb_days_short = array(
             __( 'M', 'awesome-car-rental' ),
             __( 'T', 'awesome-car-rental' ),
             __( 'W', 'awesome-car-rental' ),
@@ -509,48 +479,52 @@ $next_year_url = add_query_arg( 'cal_year', $next_year_val, $base_calendar_url )
             __( 'S', 'awesome-car-rental' ),
         );
 
-        for ( $m = 1; $m <= 12; $m++ ) :
-            $month_name   = gmdate( 'F', mktime( 0, 0, 0, $m, 1, $current_year ) );
-            $days_in_m    = (int) cal_days_in_month( CAL_GREGORIAN, $m, $current_year );
-            $first_day_w  = (int) gmdate( 'N', strtotime( sprintf( '%04d-%02d-01', $current_year, $m ) ) );
+        for ( $acrb_m = 1; $acrb_m <= 12; $acrb_m++ ) :
+            $acrb_month_name  = gmdate( 'F', mktime( 0, 0, 0, $acrb_m, 1, $acrb_current_year ) );
+            $acrb_days_in_m   = (int) cal_days_in_month( CAL_GREGORIAN, $acrb_m, $acrb_current_year );
+            $acrb_first_day_w = (int) gmdate( 'N', strtotime( sprintf( '%04d-%02d-01', $acrb_current_year, $acrb_m ) ) );
         ?>
             <div class="acrb-month-card">
                 <div class="acrb-month-header">
                     <h3 class="acrb-month-name">
                         <span class="dashicons dashicons-calendar-alt"></span>
-                        <span><?php echo esc_html( $month_name ); ?></span>
+                        <span><?php echo esc_html( $acrb_month_name ); ?></span>
                     </h3>
-                    <span class="acrb-month-year-pill"><?php echo absint( $current_year ); ?></span>
+                    <span class="acrb-month-year-pill"><?php echo absint( $acrb_current_year ); ?></span>
                 </div>
 
                 <div class="acrb-month-days-grid">
-                    <?php foreach ( $days_short as $ds ) : ?>
-                        <div class="acrb-weekday-label"><?php echo esc_html( $ds ); ?></div>
+                    <?php foreach ( $acrb_days_short as $acrb_ds ) : ?>
+                        <div class="acrb-weekday-label"><?php echo esc_html( $acrb_ds ); ?></div>
                     <?php endforeach; ?>
 
                     <?php 
-                    // Blank cells preceding month start day
-                    for ( $pad = 1; $pad < $first_day_w; $pad++ ) {
+                    // Blank cells preceding month start day.
+                    for ( $acrb_pad = 1; $acrb_pad < $acrb_first_day_w; $acrb_pad++ ) {
                         echo '<div class="acrb-day-cell acrb-day-empty"></div>';
                     }
 
-                    // Month days loop
-                    for ( $d = 1; $d <= $days_in_m; $d++ ) :
-                        $date_check_full = sprintf( '%04d-%02d-%02d', $current_year, $m, $d );
-                        $is_booked       = ! empty( $booked_days_map[ $date_check_full ] );
-                        $is_today        = ( $date_check_full === $today_str );
+                    // Month days loop.
+                    for ( $acrb_d = 1; $acrb_d <= $acrb_days_in_m; $acrb_d++ ) :
+                        $acrb_date_check_full = sprintf( '%04d-%02d-%02d', $acrb_current_year, $acrb_m, $acrb_d );
+                        $acrb_is_booked       = ! empty( $acrb_booked_days_map[ $acrb_date_check_full ] );
+                        $acrb_is_today        = ( $acrb_date_check_full === $acrb_today_str );
 
-                        $day_classes   = 'acrb-day-cell ' . ( $is_booked ? 'acrb-day-booked' : 'acrb-day-available' );
-                        if ( $is_today ) {
-                            $day_classes .= ' acrb-day-today';
+                        $acrb_day_classes = 'acrb-day-cell ' . ( $acrb_is_booked ? 'acrb-day-booked' : 'acrb-day-available' );
+                        if ( $acrb_is_today ) {
+                            $acrb_day_classes .= ' acrb-day-today';
                         }
 
-                        $title_tip = $is_booked 
-                            ? sprintf( __( 'Booked: %s', 'awesome-car-rental' ), $date_check_full ) 
-                            : sprintf( __( 'Available: %s', 'awesome-car-rental' ), $date_check_full );
+                        if ( $acrb_is_booked ) {
+                            /* translators: %s: Formatted date string (YYYY-MM-DD) */
+                            $acrb_title_tip = sprintf( __( 'Booked: %s', 'awesome-car-rental' ), $acrb_date_check_full );
+                        } else {
+                            /* translators: %s: Formatted date string (YYYY-MM-DD) */
+                            $acrb_title_tip = sprintf( __( 'Available: %s', 'awesome-car-rental' ), $acrb_date_check_full );
+                        }
                     ?>
-                        <div class="<?php echo esc_attr( $day_classes ); ?>" title="<?php echo esc_attr( $title_tip ); ?>">
-                            <?php echo absint( $d ); ?>
+                        <div class="<?php echo esc_attr( $acrb_day_classes ); ?>" title="<?php echo esc_attr( $acrb_title_tip ); ?>">
+                            <?php echo absint( $acrb_d ); ?>
                         </div>
                     <?php endfor; ?>
                 </div>
@@ -565,7 +539,7 @@ $next_year_url = add_query_arg( 'cal_year', $next_year_val, $base_calendar_url )
             <span><?php esc_html_e( 'Booked / Reserved Day', 'awesome-car-rental' ); ?></span>
         </div>
         <div class="acrb-legend-item">
-            <div class="acrb-legend-box acrb-legend-box-available">✓</div>
+            <div class="acrb-legend-box acrb-legend-box-available">&#10003;</div>
             <span><?php esc_html_e( 'Available Slot', 'awesome-car-rental' ); ?></span>
         </div>
         <div class="acrb-legend-item">

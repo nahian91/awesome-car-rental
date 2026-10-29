@@ -1,11 +1,11 @@
 <?php
 /**
  * [acrb_single_car]
- * Displays a professional single car details page with complete itinerary, drop-off location, extras quantities, and real-time pricing.
+ * Displays a professional single car details page with itinerary, time selection, insurance, border crossing, and real-time pricing (No Payment Gateways or Extras).
  * Location: templates/shortcodes/single-car.php (or shortcodes directory)
  *
  * @package Awesome_Car_Rental
- * @since   3.9.0
+ * @since   4.8.0
  */
 
 declare( strict_types=1 );
@@ -24,16 +24,29 @@ function acrb_car_details_page_shortcode(): string {
         return '<script>window.location.href=' . wp_json_encode( esc_url_raw( $final_url ) ) . ';</script><div style="padding:60px; text-align:center; font-family:-apple-system,sans-serif; color:#64748b;">Redirecting to secure login portal...</div>';
     }
 
-    // Get Car ID from URL, with fallback to the latest car if omitted
+    global $wpdb;
+    $table_cars   = $wpdb->prefix . 'dev_nahian_cars';
+    $table_promos = $wpdb->prefix . 'dev_nahian_promo_codes';
+
+    // Get Car ID from URL, with fallback to the latest car from custom table if omitted
     $car_id = isset( $_GET['car_id'] ) ? absint( wp_unslash( $_GET['car_id'] ) ) : 0;
-    if ( ! $car_id ) {
-        $latest_cars = get_posts( array( 'post_type' => 'acrb_cars', 'numberposts' => 1, 'post_status' => 'publish' ) );
-        if ( ! empty( $latest_cars ) ) {
-            $car_id = absint( $latest_cars[0]->ID );
+    
+    $car = null;
+    if ( $car_id > 0 ) {
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+        $car = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table_cars} WHERE id = %d AND status != 'retired'", $car_id ), ARRAY_A );
+    }
+
+    if ( ! $car ) {
+        // Fallback to latest available vehicle from custom table
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $car = $wpdb->get_row( "SELECT * FROM {$table_cars} WHERE status != 'retired' ORDER BY id DESC LIMIT 1", ARRAY_A );
+        if ( $car ) {
+            $car_id = absint( $car['id'] );
         }
     }
 
-    if ( ! $car_id || 'acrb_cars' !== get_post_type( $car_id ) ) {
+    if ( ! $car ) {
         return '<div class="acrb-alert error" style="padding:40px; text-align:center; background:#fef2f2; color:#991b1b; border-radius:14px; font-family:-apple-system,sans-serif; font-weight:600;">' . esc_html__( 'Vehicle not found. Please select a car from the fleet grid.', 'awesome-car-rental' ) . '</div>';
     }
 
@@ -53,72 +66,91 @@ function acrb_car_details_page_shortcode(): string {
     );
     $selected_font = $font_stacks[ $font_slug ] ?? $font_stacks['jakarta'];
 
-    // Comprehensive Price & Currency Fallbacks
-    $price = floatval( get_post_meta( $car_id, 'daily_price', true ) 
-          ?: get_post_meta( $car_id, 'price_per_day', true ) 
-          ?: get_post_meta( $car_id, 'rate_per_day', true ) ?: 0 );
-
-    $security_deposit = floatval( get_post_meta( $car_id, 'acrb_security_deposit', true ) ?: 0 );
-    $insurance_fee    = floatval( get_post_meta( $car_id, 'acrb_insurance_fee', true ) ?: 0 );
+    // Comprehensive Price & Currency Values from Custom Table Record
+    $price            = floatval( $car['price'] ?? 0.00 );
+    $security_deposit = floatval( $car['security_deposit'] ?? 0.00 );
+    $insurance_fee    = floatval( $car['insurance_fee'] ?? 0.00 );
     
-    $currency    = get_option( 'acrb_currency', '$' ); 
+    $currency    = get_option( 'acrb_currency', '£' ); 
     $rental_unit = get_option( 'acrb_rental_unit', 'day' );
 
-    // Load Specs, Amenities & Media
-    $vehicle_status  = (string) ( get_post_meta( $car_id, 'acrb_vehicle_status', true ) ?: 'active' );
-    $seating_cap     = get_post_meta( $car_id, 'acrb_seating_capacity', true ) ?: '5';
-    $baggage_cap     = get_post_meta( $car_id, 'acrb_baggage_capacity', true ) ?: '2';
-    $transmission    = (string) ( get_post_meta( $car_id, 'acrb_transmission', true ) ?: 'Automatic' );
-    $fuel_type       = (string) ( get_post_meta( $car_id, 'acrb_fuel_type', true ) ?: 'Petrol' );
-    $min_rental_days = get_post_meta( $car_id, 'acrb_min_rental_days', true ) ?: '1';
-
-    $features  = get_post_meta( $car_id, 'acrb_car_features', true ) ?: get_post_meta( $car_id, 'car_features', true ) ?: array();
-    $amenities = get_post_meta( $car_id, 'acrb_car_amenities', true ) ?: get_post_meta( $car_id, 'car_amenities', true ) ?: array();
-    $gallery   = get_post_meta( $car_id, 'acrb_car_gallery', true ) ?: get_post_meta( $car_id, 'gallery', true );
-    $vin       = (string) ( get_post_meta( $car_id, 'vin_number', true ) ?: get_post_meta( $car_id, 'vin', true ) );
-    $video_url = (string) get_post_meta( $car_id, 'acrb_car_video', true );
+    // Load Specs, Amenities & Media from Custom Table Record
+    $vehicle_status  = (string) ( $car['status'] ?: 'active' );
+    $seating_cap     = absint( $car['seats'] ?: 5 );
+    $baggage_cap     = absint( $car['bags'] ?: 2 );
+    $transmission    = (string) ( $car['transmission'] ?: 'Automatic' );
+    $fuel_type       = (string) ( $car['fuel'] ?: 'Petrol' );
+    $min_rental_days = absint( $car['min_days'] ?: 1 );
+    $vin             = (string) ( $car['vin'] ?: '' );
+    $video_url       = (string) ( $car['video'] ?: '' );
+    $car_name        = esc_html( $car['name'] );
+    $car_brand       = esc_html( $car['brand'] ?? '' );
+    $full_title      = trim( ( $car_brand ? $car_brand . ' ' : '' ) . $car_name );
+    $car_description = (string) ( $car['description'] ?? '' );
     
+    // Resolve Image
+    $raw_img  = (string) ( $car['image'] ?? '' );
+    $hero_img = '';
+    if ( is_numeric( $raw_img ) && absint( $raw_img ) > 0 ) {
+        $hero_img = wp_get_attachment_image_url( absint( $raw_img ), 'large' ) ?: '';
+    } elseif ( ! empty( $raw_img ) && filter_var( $raw_img, FILTER_VALIDATE_URL ) ) {
+        $hero_img = $raw_img;
+    }
+
+    // Gallery resolution
+    $gallery_ids = array();
+    $raw_gallery = (string) ( $car['gallery'] ?? '' );
+    if ( ! empty( $raw_gallery ) ) {
+        $gallery_ids = explode( ',', $raw_gallery );
+    }
+
     $custom_locations = get_option( 'acrb_custom_pickup_locations', array() ) ?: get_option( 'acrb_custom_locations', array() );
 
-    // Global Add-on Extras
-    $global_extras = get_option( 'acrb_global_addon_extras', get_option( 'acrb_custom_amenities', array() ) );
-    $car_amenities = get_post_meta( $car_id, 'acrb_car_amenities', true ) ?: array();
+    // Decode Insurance Plans and Border Crossing assigned to this specific car
+    $car_insurance_json = ! empty( $car['insurance_plans'] ) ? json_decode( (string) $car['insurance_plans'], true ) : array();
+    $car_border_json    = ! empty( $car['border_crossing'] ) ? json_decode( (string) $car['border_crossing'], true ) : array();
 
-    $available_extras = array();
-    if ( ! empty( $global_extras ) ) {
-        foreach ( $global_extras as $ge ) {
-            $g_name  = is_array( $ge ) ? ( $ge['name'] ?? '' ) : $ge;
-            $g_price = is_array( $ge ) ? floatval( $ge['price'] ?? 15.00 ) : 15.00;
-            $is_en   = true;
-            if ( ! empty( $car_amenities ) ) {
-                foreach ( $car_amenities as $ca ) {
-                    if ( ( $ca['name'] ?? '' ) === $g_name && empty( $ca['enabled'] ) ) {
-                        $is_en = false;
-                        break;
-                    }
-                }
-            }
-            if ( $is_en && ! empty( $g_name ) ) {
-                $available_extras[] = array(
-                    'name'  => $g_name,
-                    'price' => $g_price,
+    // Filter enabled insurance plans for this car
+    $available_insurance = array();
+    if ( ! empty( $car_insurance_json ) && is_array( $car_insurance_json ) ) {
+        foreach ( $car_insurance_json as $ins ) {
+            if ( ! empty( $ins['enabled'] ) && ! empty( $ins['name'] ) ) {
+                $available_insurance[] = array(
+                    'name'  => $ins['name'],
+                    'price' => floatval( $ins['price'] ?? 0 ),
+                    'type'  => $ins['type'] ?? 'day',
                 );
             }
         }
     }
-    
-    $enabled_methods = array();
-    if ( get_option( 'acrb_enable_pay_later' ) === 'yes' ) {
-        $enabled_methods['pay_later'] = __( 'Pay at Counter / Terminal Pickup', 'awesome-car-rental' );
+
+    // Filter enabled border crossing options for this car
+    $available_borders = array();
+    if ( ! empty( $car_border_json ) && is_array( $car_border_json ) ) {
+        foreach ( $car_border_json as $border ) {
+            if ( ! empty( $border['enabled'] ) && ! empty( $border['country'] ) ) {
+                $available_borders[] = array(
+                    'country' => $border['country'],
+                    'fee'     => floatval( $border['fee'] ?? 0 ),
+                    'type'    => $border['type'] ?? 'flat',
+                );
+            }
+        }
     }
-    if ( get_option( 'acrb_enable_bank' ) === 'yes' ) {
-        $enabled_methods['bank'] = __( 'Direct Bank Wire Transfer (BACS)', 'awesome-car-rental' );
-    }
-    if ( get_option( 'acrb_enable_cash' ) === 'yes' ) {
-        $enabled_methods['cash'] = __( 'Secure Cash on Hand', 'awesome-car-rental' );
-    }
-    if ( empty( $enabled_methods ) ) {
-        $enabled_methods['pay_later'] = __( 'Pay at Counter / Terminal Pickup', 'awesome-car-rental' );
+
+    // Fetch active promotional codes from database for JavaScript validation
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+    $db_promos = $wpdb->get_results( "SELECT * FROM {$table_promos} WHERE status = 'active'", ARRAY_A );
+    $promo_map = array();
+    if ( ! empty( $db_promos ) ) {
+        foreach ( $db_promos as $p ) {
+            $promo_map[ strtoupper( trim( $p['code'] ) ) ] = array(
+                'type'      => $p['discount_type'], // percentage or fixed
+                'value'     => floatval( $p['discount_value'] ),
+                'min_spend' => floatval( $p['min_spend'] ),
+                'expiry'    => $p['expiry_date'],
+            );
+        }
     }
 
     // Dynamic Checkout Page Resolution
@@ -316,8 +348,6 @@ function acrb_car_details_page_shortcode(): string {
             border: 1px solid #e2e8f0;
             border-radius: 20px;
             background: #ffffff;
-            position: sticky;
-            top: 30px;
             box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.06);
         }
         .acrb-price-hero {
@@ -372,70 +402,86 @@ function acrb_car_details_page_shortcode(): string {
             cursor: pointer;
         }
 
-        /* Sidebar Extras Selection */
-        .acrb-sidebar-extras {
-            margin: 20px 0;
-            padding: 16px;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
+        /* Luxury Selectable Radio Card Lists (Insurance & Border Crossing) */
+        .acrb-luxury-options-group {
+            margin: 22px 0;
         }
-        .acrb-sidebar-extra-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 13px;
-            font-weight: 700;
-            color: #334155;
+        .acrb-group-title {
+            font-size: 11.5px;
+            font-weight: 900;
+            color: var(--acrb-single-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
             margin-bottom: 10px;
         }
-        .acrb-sidebar-extra-row:last-child {
-            margin-bottom: 0;
-        }
-        .acrb-sidebar-qty {
-            width: 60px !important;
-            height: 34px !important;
-            padding: 0 8px !important;
-            text-align: center;
-            font-weight: 800;
-        }
-
-        .acrb-pay-option {
+        .acrb-luxury-card {
             display: flex;
             align-items: center;
-            cursor: pointer;
-            padding: 14px 18px;
+            justify-content: space-between;
+            padding: 14px 16px;
             border: 1.5px solid #e2e8f0;
-            border-radius: 10px;
+            border-radius: 12px;
+            background: #ffffff;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            margin-bottom: 8px;
+        }
+        .acrb-luxury-card:hover {
+            border-color: #94a3b8;
+            background: #f8fafc;
+        }
+        .acrb-luxury-card.selected {
+            border-color: var(--acrb-single-primary);
+            background: #eef2ff;
+        }
+        .acrb-luxury-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             font-size: 13.5px;
             font-weight: 700;
             color: #334155;
-            background: #ffffff;
-            transition: all 0.15s ease;
-            margin-bottom: 10px;
         }
-        .acrb-pay-option:hover {
-            border-color: var(--acrb-single-primary);
-            background: #f8fafc;
-        }
-        .acrb-pay-option input[type="radio"] {
+        .acrb-luxury-card input[type="radio"] {
             accent-color: var(--acrb-single-primary);
-            width: 18px;
-            height: 18px;
-            margin-right: 12px;
+            width: 17px;
+            height: 17px;
             cursor: pointer;
         }
+        .acrb-luxury-price {
+            font-size: 13px;
+            font-weight: 900;
+            color: var(--acrb-single-primary);
+        }
 
-        /* Price Breakdown */
+        /* Ultra-Premium Price Breakdown Card */
         .acrb-breakdown-card {
             background: #f8fafc;
             border: 1.5px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 20px;
+            border-radius: 16px;
+            padding: 24px;
             margin: 24px 0;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 14px;
+            box-shadow: 0 4px 16px -4px rgba(15, 23, 42, 0.04);
+        }
+        .acrb-breakdown-header {
+            font-size: 12px;
+            font-weight: 900;
+            color: var(--acrb-single-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .acrb-breakdown-header .acrb-single-icon {
+            color: var(--acrb-single-primary);
+            width: 16px;
+            height: 16px;
         }
         .acrb-bd-item {
             display: flex;
@@ -444,17 +490,29 @@ function acrb_car_details_page_shortcode(): string {
             font-size: 13.5px;
             color: #334155;
             padding-bottom: 10px;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 1px solid #f1f5f9;
         }
-        .acrb-bd-item:last-child {
+        .acrb-bd-item:last-of-type {
             border-bottom: none;
             padding-bottom: 0;
         }
         .acrb-bd-label {
             display: flex;
             align-items: flex-start;
-            gap: 8px;
+            gap: 10px;
             font-weight: 700;
+        }
+        .acrb-bd-icon-badge {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            background: #eef2ff;
+            color: var(--acrb-single-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 14px;
         }
         .acrb-bd-sub {
             display: block;
@@ -472,11 +530,11 @@ function acrb_car_details_page_shortcode(): string {
             justify-content: space-between;
             align-items: center;
             border-top: 2px dashed #cbd5e1;
-            padding-top: 14px;
-            margin-top: 4px;
+            padding-top: 16px;
+            margin-top: 6px;
             font-weight: 900;
             color: var(--acrb-single-text);
-            font-size: 18px;
+            font-size: 19px;
         }
 
         .acrb-submit-btn {
@@ -546,51 +604,46 @@ function acrb_car_details_page_shortcode(): string {
                 width: 100% !important;
                 min-width: 100% !important;
             }
-            .acrb-booking-card {
-                position: static;
-            }
         }
     </style>
 
-    <div class="acrb-main-container" data-day-rate="<?php echo esc_attr( (string) $price ); ?>" data-deposit="<?php echo esc_attr( (string) $security_deposit ); ?>" data-insurance="<?php echo esc_attr( (string) $insurance_fee ); ?>" data-currency="<?php echo esc_attr( $currency ); ?>">
+    <div class="acrb-main-container" data-day-rate="<?php echo esc_attr( (string) $price ); ?>" data-deposit="<?php echo esc_attr( (string) $security_deposit ); ?>" data-insurance="<?php echo esc_attr( (string) $insurance_fee ); ?>" data-currency="<?php echo esc_attr( $currency ); ?>" data-promos="<?php echo esc_attr( wp_json_encode( $promo_map ) ); ?>">
         <div class="acrb-flex-grid">
             
             <!-- Left Content Column -->
             <div class="acrb-content-left">
                 <div class="acrb-gallery-stage">
-                    <?php 
-                    $hero_img = get_the_post_thumbnail_url( $car_id, 'large' );
-                    if ( ! $hero_img && ! empty( $gallery ) ) {
-                        $first_gallery_id = is_array( $gallery ) ? reset( $gallery ) : explode( ',', (string) $gallery )[0];
-                        $hero_img = wp_get_attachment_image_url( (int) $first_gallery_id, 'large' );
-                    }
-                    ?>
-                    <img src="<?php echo esc_url( $hero_img ); ?>" id="acrb-hero-view" alt="<?php echo esc_attr( get_the_title( $car_id ) ); ?>">
+                    <?php if ( ! empty( $hero_img ) ) : ?>
+                        <img src="<?php echo esc_url( $hero_img ); ?>" id="acrb-hero-view" alt="<?php echo esc_attr( $full_title ); ?>">
+                    <?php else : ?>
+                        <div class="acrb-empty-box" style="height: 440px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                            <svg class="acrb-single-icon" viewBox="0 0 24 24"><path d="M5 17h14v-5l-2-6H7l-2 6v5z"></path><circle cx="7.5" cy="17.5" r="2.5"></circle><circle cx="16.5" cy="17.5" r="2.5"></circle></svg>
+                            <p><?php esc_html_e( 'No photo available', 'awesome-car-rental' ); ?></p>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="acrb-header-box">
                     <div class="acrb-vin-badge">
                         <?php esc_html_e( 'VIN Ref:', 'awesome-car-rental' ); ?> #<?php echo esc_html( $vin ?: $car_id ); ?>
                     </div>
-                    <h1 class="acrb-car-title"><?php echo esc_html( get_the_title( $car_id ) ); ?></h1>
+                    <h1 class="acrb-car-title"><?php echo esc_html( $full_title ); ?></h1>
                 </div>
 
                 <!-- Tabs Navigation -->
                 <div class="acrb-tabs-nav">
                     <button type="button" class="acrb-tab-btn active" data-tab="overview"><?php esc_html_e( 'Overview', 'awesome-car-rental' ); ?></button>
-                    <button type="button" class="acrb-tab-btn" data-tab="specs"><?php esc_html_e( 'Specifications & Extras', 'awesome-car-rental' ); ?></button>
+                    <button type="button" class="acrb-tab-btn" data-tab="specs"><?php esc_html_e( 'Specifications', 'awesome-car-rental' ); ?></button>
                     <button type="button" class="acrb-tab-btn" data-tab="gallery"><?php esc_html_e( 'Gallery', 'awesome-car-rental' ); ?></button>
                     <button type="button" class="acrb-tab-btn" data-tab="video"><?php esc_html_e( 'Video Walkaround', 'awesome-car-rental' ); ?></button>
                 </div>
 
                 <div class="acrb-tabs-content">
-                    
                     <!-- Overview Tab -->
                     <div id="tab-overview" class="acrb-tab-pane active">
                         <div class="acrb-description" style="color: var(--acrb-single-secondary); font-size: 15px; line-height: 1.7;">
                             <?php 
-                            $content = get_post_field( 'post_content', $car_id );
-                            echo ! empty( $content ) ? wp_kses_post( wpautop( $content ) ) : '<p class="acrb-empty-msg">' . esc_html__( 'No description available for this vehicle.', 'awesome-car-rental' ) . '</p>'; 
+                            echo ! empty( $car_description ) ? wp_kses_post( wpautop( $car_description ) ) : '<p class="acrb-empty-msg">' . esc_html__( 'No description available for this vehicle.', 'awesome-car-rental' ) . '</p>'; 
                             ?>
                         </div>
                     </div>
@@ -599,7 +652,6 @@ function acrb_car_details_page_shortcode(): string {
                     <div id="tab-specs" class="acrb-tab-pane">
                         <h3 style="margin:0 0 16px 0; font-size:12px; font-weight:900; color:var(--acrb-single-secondary); text-transform:uppercase; letter-spacing:0.04em;"><?php esc_html_e( 'Vehicle Specifications & Status', 'awesome-car-rental' ); ?></h3>
                         <div class="acrb-spec-wrap">
-                            
                             <div class="acrb-spec-node">
                                 <div class="acrb-spec-icon-wrap">
                                     <svg class="acrb-single-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
@@ -607,7 +659,6 @@ function acrb_car_details_page_shortcode(): string {
                                 <div class="acrb-spec-node-lbl"><?php esc_html_e( 'Status', 'awesome-car-rental' ); ?></div>
                                 <div class="acrb-spec-node-val"><?php echo esc_html( $vehicle_status ); ?></div>
                             </div>
-
                             <div class="acrb-spec-node">
                                 <div class="acrb-spec-icon-wrap">
                                     <svg class="acrb-single-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 00-3-3.87"></path><path d="M16 3.13a4 4 0 010 7.75"></path></svg>
@@ -615,7 +666,6 @@ function acrb_car_details_page_shortcode(): string {
                                 <div class="acrb-spec-node-lbl"><?php esc_html_e( 'Seating', 'awesome-car-rental' ); ?></div>
                                 <div class="acrb-spec-node-val"><?php echo esc_html( (string) $seating_cap ); ?> <?php esc_html_e( 'Seats', 'awesome-car-rental' ); ?></div>
                             </div>
-
                             <div class="acrb-spec-node">
                                 <div class="acrb-spec-icon-wrap">
                                     <svg class="acrb-single-icon" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"></path></svg>
@@ -623,7 +673,6 @@ function acrb_car_details_page_shortcode(): string {
                                 <div class="acrb-spec-node-lbl"><?php esc_html_e( 'Baggage', 'awesome-car-rental' ); ?></div>
                                 <div class="acrb-spec-node-val"><?php echo esc_html( (string) $baggage_cap ); ?> <?php esc_html_e( 'Bags', 'awesome-car-rental' ); ?></div>
                             </div>
-
                             <div class="acrb-spec-node">
                                 <div class="acrb-spec-icon-wrap">
                                     <svg class="acrb-single-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg>
@@ -631,7 +680,6 @@ function acrb_car_details_page_shortcode(): string {
                                 <div class="acrb-spec-node-lbl"><?php esc_html_e( 'Transmission', 'awesome-car-rental' ); ?></div>
                                 <div class="acrb-spec-node-val"><?php echo esc_html( $transmission ); ?></div>
                             </div>
-
                             <div class="acrb-spec-node">
                                 <div class="acrb-spec-icon-wrap">
                                     <svg class="acrb-single-icon" viewBox="0 0 24 24"><path d="M3 22V5a2 2 0 012-2h8a2 2 0 012 2v17"></path><path d="M15 9h2a2 2 0 012 2v2a2 2 0 002 2 2 2 0 002-2V9.5"></path></svg>
@@ -639,7 +687,6 @@ function acrb_car_details_page_shortcode(): string {
                                 <div class="acrb-spec-node-lbl"><?php esc_html_e( 'Fuel / Engine', 'awesome-car-rental' ); ?></div>
                                 <div class="acrb-spec-node-val"><?php echo esc_html( $fuel_type ); ?></div>
                             </div>
-
                             <div class="acrb-spec-node">
                                 <div class="acrb-spec-icon-wrap">
                                     <svg class="acrb-single-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -647,67 +694,14 @@ function acrb_car_details_page_shortcode(): string {
                                 <div class="acrb-spec-node-lbl"><?php esc_html_e( 'Min Rental', 'awesome-car-rental' ); ?></div>
                                 <div class="acrb-spec-node-val"><?php echo esc_html( (string) $min_rental_days ); ?> <?php echo esc_html( ucfirst( $rental_unit ) ); ?></div>
                             </div>
-
                         </div>
-
-                        <?php if ( ! empty( $features ) ) : ?>
-                        <div style="margin-top:32px; padding-top:24px; border-top:1px solid #e2e8f0;">
-                            <h3 style="margin:0 0 16px 0; font-size:12px; font-weight:900; color:var(--acrb-single-secondary); text-transform:uppercase; letter-spacing:0.04em;"><?php esc_html_e( 'Technical Specifications', 'awesome-car-rental' ); ?></h3>
-                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px;">
-                                <?php foreach ( $features as $f ) : 
-                                    $f_name    = is_array( $f ) ? ( $f['name'] ?? '' ) : '';
-                                    $f_val     = is_array( $f ) ? ( $f['value'] ?? '' ) : $f;
-                                    $f_enabled = is_array( $f ) ? ! empty( $f['enabled'] ) : true;
-
-                                    if ( $f_enabled && ! empty( $f_val ) ) : 
-                                ?>
-                                    <div style="display: flex; align-items: center; justify-content: space-between; background: #ffffff; border: 1px solid #e2e8f0; padding: 14px 18px; border-radius: 12px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);">
-                                        <div style="display: flex; align-items: center; gap: 10px;">
-                                            <svg class="acrb-single-icon" style="color:var(--acrb-single-primary);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"></path></svg>
-                                            <span style="font-size: 13.5px; font-weight: 700; color: #334155;"><?php echo esc_html( $f_name ); ?></span>
-                                        </div>
-                                        <strong style="color: var(--acrb-single-text); font-size: 14px;"><?php echo esc_html( $f_val ); ?></strong>
-                                    </div>
-                                <?php endif; endforeach; ?>
-                            </div>
-                        </div>
-                        <?php endif; ?>
-
-                        <?php if ( ! empty( $amenities ) ) : ?>
-                        <div style="margin-top:32px; padding-top:24px; border-top:1px solid #e2e8f0;">
-                            <h3 style="margin:0 0 16px 0; font-size:12px; font-weight:900; color:var(--acrb-single-secondary); text-transform:uppercase; letter-spacing:0.04em;"><?php esc_html_e( 'Global Add-on Extras & Equipment', 'awesome-car-rental' ); ?></h3>
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;">
-                                <?php foreach ( $amenities as $a ) : 
-                                    $a_name    = is_array( $a ) ? ( $a['name'] ?? '' ) : $a;
-                                    $a_enabled = is_array( $a ) ? ! empty( $a['enabled'] ) : true;
-
-                                    if ( $a_enabled && ! empty( $a_name ) ) : 
-                                ?>
-                                    <div style="display: flex; align-items: center; gap: 10px; color: #334155; background: #ffffff; border: 1px solid #e2e8f0; padding: 14px 18px; border-radius: 12px; font-size: 14px; font-weight: 700; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);">
-                                        <svg class="acrb-single-icon" style="color: var(--acrb-single-accent);" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                        <span><?php echo esc_html( $a_name ); ?></span>
-                                    </div>
-                                <?php endif; endforeach; ?>
-                            </div>
-                        </div>
-                        <?php endif; ?>
                     </div>
 
                     <!-- Gallery Tab -->
                     <div id="tab-gallery" class="acrb-tab-pane">
-                        <?php 
-                        $gallery_ids = array();
-                        if ( ! empty( $gallery ) ) {
-                            if ( is_array( $gallery ) ) {
-                                $gallery_ids = $gallery;
-                            } else {
-                                $gallery_ids = explode( ',', (string) $gallery );
-                            }
-                        }
-                        ?>
-                        <?php if ( ! empty( $gallery_ids ) || $hero_img ) : ?>
+                        <?php if ( ! empty( $gallery_ids ) || ! empty( $hero_img ) ) : ?>
                             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px;">
-                                <?php if ( $hero_img ) : ?>
+                                <?php if ( ! empty( $hero_img ) ) : ?>
                                     <div style="border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; background: #f8fafc; aspect-ratio: 16/10;">
                                         <img src="<?php echo esc_url( $hero_img ); ?>" class="acrb-gallery-item" style="width:100%; height:100%; object-fit:cover; cursor:pointer;" alt="">
                                     </div>
@@ -715,8 +709,13 @@ function acrb_car_details_page_shortcode(): string {
                                 <?php foreach ( $gallery_ids as $gid ) : 
                                     $gid = trim( (string) $gid );
                                     if ( ! empty( $gid ) ) : 
-                                        $img_url = wp_get_attachment_image_url( (int) $gid, 'large' );
-                                        if ( $img_url ) :
+                                        $img_url = '';
+                                        if ( is_numeric( $gid ) && absint( $gid ) > 0 ) {
+                                            $img_url = wp_get_attachment_image_url( absint( $gid ), 'large' ) ?: '';
+                                        } elseif ( filter_var( $gid, FILTER_VALIDATE_URL ) ) {
+                                            $img_url = $gid;
+                                        }
+                                        if ( ! empty( $img_url ) ) :
                                 ?>
                                     <div style="border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; background: #f8fafc; aspect-ratio: 16/10;">
                                         <img src="<?php echo esc_url( $img_url ); ?>" class="acrb-gallery-item" style="width:100%; height:100%; object-fit:cover; cursor:pointer;" alt="">
@@ -750,7 +749,7 @@ function acrb_car_details_page_shortcode(): string {
                 </div>
             </div>
 
-            <!-- Booking Sidebar with Itinerary, Extras Quantities & Price Breakdown -->
+            <!-- Booking Sidebar (No Payment Selection Required Here) -->
             <div class="acrb-sidebar-right">
                 <div class="acrb-booking-card">
                     <div class="acrb-price-hero">
@@ -761,15 +760,27 @@ function acrb_car_details_page_shortcode(): string {
                     <form action="<?php echo esc_url( $checkout_page_url ); ?>" method="GET" id="acrb-booking-form">
                         <input type="hidden" name="car_id" value="<?php echo absint( $car_id ); ?>">
 
-                        <!-- Pickup & Return Dates -->
-                        <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-                            <div style="flex: 1;">
+                        <!-- Pickup Date & Time -->
+                        <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                            <div style="flex: 2;">
                                 <label class="acrb-label" for="p_date"><?php esc_html_e( 'Pickup Date', 'awesome-car-rental' ); ?></label>
                                 <input type="date" id="p_date" name="pdate" required min="<?php echo esc_attr( gmdate( 'Y-m-d' ) ); ?>" class="acrb-input">
                             </div>
-                            <div style="flex: 1;">
+                            <div style="flex: 1.2;">
+                                <label class="acrb-label" for="p_time"><?php esc_html_e( 'Time', 'awesome-car-rental' ); ?></label>
+                                <input type="time" id="p_time" name="ptime" value="10:00" required class="acrb-input">
+                            </div>
+                        </div>
+
+                        <!-- Return Date & Time -->
+                        <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+                            <div style="flex: 2;">
                                 <label class="acrb-label" for="r_date"><?php esc_html_e( 'Return Date', 'awesome-car-rental' ); ?></label>
                                 <input type="date" id="r_date" name="rdate" required min="<?php echo esc_attr( gmdate( 'Y-m-d' ) ); ?>" class="acrb-input">
+                            </div>
+                            <div style="flex: 1.2;">
+                                <label class="acrb-label" for="r_time"><?php esc_html_e( 'Time', 'awesome-car-rental' ); ?></label>
+                                <input type="time" id="r_time" name="rtime" value="10:00" required class="acrb-input">
                             </div>
                         </div>
 
@@ -801,88 +812,124 @@ function acrb_car_details_page_shortcode(): string {
                             </div>
                         </div>
 
-                        <!-- Add-on Extras with Quantities -->
-                        <?php if ( ! empty( $available_extras ) ) : ?>
-                        <div class="acrb-sidebar-extras">
-                            <div style="font-size: 11.5px; font-weight: 900; color: var(--acrb-single-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;">
-                                <?php esc_html_e( 'Optional Extras & Quantities', 'awesome-car-rental' ); ?>
-                            </div>
-                            <?php foreach ( $available_extras as $idx => $ext ) : ?>
-                                <div class="acrb-sidebar-extra-row">
-                                    <div>
-                                        <span><?php echo esc_html( $ext['name'] ); ?></span><br>
-                                        <span style="font-size: 11px; color: var(--acrb-single-secondary); font-weight: 600;"><?php echo esc_html( $currency . number_format( $ext['price'], 2 ) ); ?> each</span>
-                                    </div>
-                                    <input type="number" name="acrb_extra_qty[<?php echo esc_attr( $ext['name'] ); ?>]" value="0" min="0" max="10" data-price="<?php echo esc_attr( (string) $ext['price'] ); ?>" class="acrb-input acrb-sidebar-qty acrb-qty-input">
+                        <!-- PROTECTION & INSURANCE PLANS (Luxury Radio Cards) -->
+                        <?php if ( ! empty( $available_insurance ) ) : ?>
+                        <div class="acrb-luxury-options-group">
+                            <div class="acrb-group-title">🛡️ <?php esc_html_e( 'Protection & Insurance Plans', 'awesome-car-rental' ); ?></div>
+                            <label class="acrb-luxury-card selected">
+                                <div class="acrb-luxury-info">
+                                    <input type="radio" name="acrb_selected_insurance" value="" data-price="0" data-type="flat" class="acrb-insurance-radio" checked>
+                                    <span><?php esc_html_e( 'Standard Basic Protection', 'awesome-car-rental' ); ?></span>
                                 </div>
+                                <span class="acrb-luxury-price"><?php echo esc_html( $currency ); ?>0.00</span>
+                            </label>
+                            <?php foreach ( $available_insurance as $ins ) : ?>
+                                <label class="acrb-luxury-card">
+                                    <div class="acrb-luxury-info">
+                                        <input type="radio" name="acrb_selected_insurance" value="<?php echo esc_attr( $ins['name'] ); ?>" data-price="<?php echo esc_attr( (string) $ins['price'] ); ?>" data-type="<?php echo esc_attr( $ins['type'] ); ?>" class="acrb-insurance-radio">
+                                        <span>🛡️ <?php echo esc_html( $ins['name'] ); ?></span>
+                                    </div>
+                                    <span class="acrb-luxury-price">+<?php echo esc_html( $currency . number_format( $ins['price'], 2 ) . ( $ins['type'] === 'day' ? '/day' : ' (flat)' ) ); ?></span>
+                                </label>
                             <?php endforeach; ?>
                         </div>
                         <?php endif; ?>
 
-                        <?php if ( ! empty( $enabled_methods ) ) : ?>
-                        <div style="margin-bottom: 20px;">
-                            <label class="acrb-label"><?php esc_html_e( 'Payment Method', 'awesome-car-rental' ); ?></label>
-                            <div>
-                                <?php foreach ( $enabled_methods as $k => $v ) : ?>
-                                <label class="acrb-pay-option">
-                                    <input type="radio" name="pmethod" value="<?php echo esc_attr( $k ); ?>" required>
-                                    <span><?php echo esc_html( $v ); ?></span>
+                        <!-- CROSS-BORDER PERMITS (Luxury Radio Cards) -->
+                        <?php if ( ! empty( $available_borders ) ) : ?>
+                        <div class="acrb-luxury-options-group">
+                            <div class="acrb-group-title">🌍 <?php esc_html_e( 'Cross-Border Permits', 'awesome-car-rental' ); ?></div>
+                            <label class="acrb-luxury-card selected">
+                                <div class="acrb-luxury-info">
+                                    <input type="radio" name="acrb_selected_border" value="" data-fee="0" data-type="flat" class="acrb-border-radio" checked>
+                                    <span><?php esc_html_e( 'No Border Crossing', 'awesome-car-rental' ); ?></span>
+                                </div>
+                                <span class="acrb-luxury-price"><?php echo esc_html( $currency ); ?>0.00</span>
+                            </label>
+                            <?php foreach ( $available_borders as $border ) : ?>
+                                <label class="acrb-luxury-card">
+                                    <div class="acrb-luxury-info">
+                                        <input type="radio" name="acrb_selected_border" value="<?php echo esc_attr( $border['country'] ); ?>" data-fee="<?php echo esc_attr( (string) $border['fee'] ); ?>" data-type="<?php echo esc_attr( $border['type'] ); ?>" class="acrb-border-radio">
+                                        <span>🌐 <?php echo esc_html( $border['country'] ); ?></span>
+                                    </div>
+                                    <span class="acrb-luxury-price">+<?php echo esc_html( $currency . number_format( $border['fee'], 2 ) . ( $border['type'] === 'day' ? '/day' : ' (flat)' ) ); ?></span>
                                 </label>
-                                <?php endforeach; ?>
-                            </div>
+                            <?php endforeach; ?>
                         </div>
                         <?php endif; ?>
 
-                        <!-- Nice Price Breakdown Box -->
+                        <!-- ULTRA-PREMIUM PRICE BREAKDOWN SUMMARY -->
                         <div class="acrb-breakdown-card">
-                            <div style="font-size: 11.5px; font-weight: 900; color: var(--acrb-single-secondary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
-                                <?php esc_html_e( 'Price Breakdown Summary', 'awesome-car-rental' ); ?>
+                            <div class="acrb-breakdown-header">
+                                <svg class="acrb-single-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                                <span><?php esc_html_e( 'Price Breakdown Summary', 'awesome-car-rental' ); ?></span>
                             </div>
                             
+                            <!-- Vehicle Rental Subtotal -->
                             <div class="acrb-bd-item">
                                 <div class="acrb-bd-label">
+                                    <div class="acrb-bd-icon-badge">🚗</div>
                                     <div>
-                                        <span><?php esc_html_e( 'Rental Duration:', 'awesome-car-rental' ); ?></span>
-                                        <span class="acrb-bd-sub" id="acrb_calc_days">0 Days</span>
+                                        <span><?php esc_html_e( 'Vehicle Rental', 'awesome-car-rental' ); ?></span>
+                                        <span class="acrb-bd-sub" id="acrb_calc_days">0 Days selected</span>
                                     </div>
                                 </div>
                                 <div class="acrb-bd-val" id="acrb_calc_subtotal"><?php echo esc_html( $currency ); ?>0.00</div>
                             </div>
 
-                            <div class="acrb-bd-item" id="acrb_sidebar_extras_summary" style="display: none;">
+                            <!-- Selected Insurance (Dynamic Row) -->
+                            <div class="acrb-bd-item" id="acrb_bd_insurance_row" style="display: none;">
                                 <div class="acrb-bd-label">
+                                    <div class="acrb-bd-icon-badge">🛡️</div>
                                     <div>
-                                        <span><?php esc_html_e( 'Add-on Extras:', 'awesome-car-rental' ); ?></span>
-                                        <span class="acrb-bd-sub"><?php esc_html_e( 'Equipment & Protection', 'awesome-car-rental' ); ?></span>
+                                        <span id="acrb_bd_insurance_title"><?php esc_html_e( 'Insurance Plan', 'awesome-car-rental' ); ?></span>
+                                        <span class="acrb-bd-sub"><?php esc_html_e( 'Selected Coverage', 'awesome-car-rental' ); ?></span>
                                     </div>
                                 </div>
-                                <div class="acrb-bd-val" id="acrb_calc_extras_total"><?php echo esc_html( $currency ); ?>0.00</div>
+                                <div class="acrb-bd-val" id="acrb_bd_insurance_val">+<?php echo esc_html( $currency ); ?>0.00</div>
                             </div>
 
+                            <!-- Selected Border Crossing (Dynamic Row) -->
+                            <div class="acrb-bd-item" id="acrb_bd_border_row" style="display: none;">
+                                <div class="acrb-bd-label">
+                                    <div class="acrb-bd-icon-badge">🌐</div>
+                                    <div>
+                                        <span id="acrb_bd_border_title"><?php esc_html_e( 'Cross-Border Permit', 'awesome-car-rental' ); ?></span>
+                                        <span class="acrb-bd-sub"><?php esc_html_e( 'International Travel', 'awesome-car-rental' ); ?></span>
+                                    </div>
+                                </div>
+                                <div class="acrb-bd-val" id="acrb_bd_border_val">+<?php echo esc_html( $currency ); ?>0.00</div>
+                            </div>
+
+                            <!-- Security Deposit -->
                             <?php if ( $security_deposit > 0 ) : ?>
                             <div class="acrb-bd-item">
                                 <div class="acrb-bd-label">
+                                    <div class="acrb-bd-icon-badge">🔒</div>
                                     <div>
-                                        <span><?php esc_html_e( 'Security Deposit:', 'awesome-car-rental' ); ?></span>
-                                        <span class="acrb-bd-sub"><?php esc_html_e( 'Refundable Hold', 'awesome-car-rental' ); ?></span>
+                                        <span><?php esc_html_e( 'Security Deposit', 'awesome-car-rental' ); ?></span>
+                                        <span class="acrb-bd-sub"><?php esc_html_e( 'Fully Refundable Hold', 'awesome-car-rental' ); ?></span>
                                     </div>
                                 </div>
                                 <div class="acrb-bd-val"><?php echo esc_html( $currency . number_format( $security_deposit, 2 ) ); ?></div>
                             </div>
                             <?php endif; ?>
 
+                            <!-- Mandatory Insurance Fee -->
                             <?php if ( $insurance_fee > 0 ) : ?>
                             <div class="acrb-bd-item">
                                 <div class="acrb-bd-label">
+                                    <div class="acrb-bd-icon-badge">📋</div>
                                     <div>
-                                        <span><?php esc_html_e( 'Insurance Fee:', 'awesome-car-rental' ); ?></span>
-                                        <span class="acrb-bd-sub"><?php esc_html_e( 'Coverage Protection', 'awesome-car-rental' ); ?></span>
+                                        <span><?php esc_html_e( 'Mandatory Insurance', 'awesome-car-rental' ); ?></span>
+                                        <span class="acrb-bd-sub"><?php esc_html_e( 'Base Fleet Protection', 'awesome-car-rental' ); ?></span>
                                     </div>
                                 </div>
                                 <div class="acrb-bd-val"><?php echo esc_html( $currency . number_format( $insurance_fee, 2 ) ); ?></div>
                             </div>
                             <?php endif; ?>
 
+                            <!-- Grand Total Bar -->
                             <div class="acrb-breakdown-total">
                                 <span><?php esc_html_e( 'Estimated Total', 'awesome-car-rental' ); ?></span>
                                 <span style="color: var(--acrb-single-primary);"><?php echo esc_html( $currency ); ?><span id="acrb_sum_total">0.00</span></span>
@@ -915,24 +962,49 @@ function acrb_car_details_page_shortcode(): string {
             });
         });
 
-        // Price Breakdown Logic with Quantities & Drop-off
+        // Luxury Radio Card Active State Handler
+        function setupLuxuryCards(selector) {
+            const radios = document.querySelectorAll(selector);
+            radios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    document.querySelectorAll('input[name="' + this.name + '"]').forEach(r => {
+                        r.closest('.acrb-luxury-card').classList.remove('selected');
+                    });
+                    if (this.checked) {
+                        this.closest('.acrb-luxury-card').classList.add('selected');
+                    }
+                    calc();
+                });
+            });
+        }
+        setupLuxuryCards('input[name="acrb_selected_insurance"]');
+        setupLuxuryCards('input[name="acrb_selected_border"]');
+
+        // Price Breakdown Logic with Dates, Times, Insurance & Border Crossing
         const pDate = document.getElementById('p_date');
+        const pTime = document.getElementById('p_time');
         const rDate = document.getElementById('r_date');
+        const rTime = document.getElementById('r_time');
         const pLoc = document.getElementById('acrb_pickup_loc');
         const rLoc = document.getElementById('acrb_return_loc');
         
         const displayTotal = document.getElementById('acrb_sum_total');
         const displayDays = document.getElementById('acrb_calc_days');
         const displaySubtotal = document.getElementById('acrb_calc_subtotal');
-        const qtyInputs = document.querySelectorAll('.acrb-qty-input');
-        const extrasSummaryRow = document.getElementById('acrb_sidebar_extras_summary');
-        const displayExtrasTotal = document.getElementById('acrb_calc_extras_total');
         
-        const container = document.querySelector('.acrb-main-container');
+        // Dynamic breakdown rows
+        const insuranceRow = document.getElementById('acrb_bd_insurance_row');
+        const insuranceTitle = document.getElementById('acrb_bd_insurance_title');
+        const insuranceVal = document.getElementById('acrb_bd_insurance_val');
 
+        const borderRow = document.getElementById('acrb_bd_border_row');
+        const borderTitle = document.getElementById('acrb_bd_border_title');
+        const borderVal = document.getElementById('acrb_bd_border_val');
+
+        const container = document.querySelector('.acrb-main-container');
         const rate = container ? parseFloat(container.dataset.dayRate) : 0;
         const deposit = container ? parseFloat(container.dataset.deposit) : 0;
-        const insurance = container ? parseFloat(container.dataset.insurance) : 0;
+        const insuranceBase = container ? parseFloat(container.dataset.insurance) : 0;
         const currency = container ? container.dataset.currency : '$';
 
         // Auto-sync return location with pickup location if empty
@@ -943,37 +1015,62 @@ function acrb_car_details_page_shortcode(): string {
         }
 
         function calc() {
-            if (pDate && rDate && pDate.value && rDate.value) {
-                const start = new Date(pDate.value);
-                const end = new Date(rDate.value);
-                const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            if (pDate && rDate && pDate.value && rDate.value && pTime && rTime) {
+                const startStr = pDate.value + 'T' + (pTime.value || '10:00');
+                const endStr = rDate.value + 'T' + (rTime.value || '10:00');
                 
-                if (days > 0) {
+                const start = new Date(startStr);
+                const end = new Date(endStr);
+                
+                const diffHours = (end - start) / (1000 * 60 * 60);
+                
+                if (diffHours > 0) {
+                    const days = Math.max(1, Math.ceil(diffHours / 24));
                     let subtotal = days * rate;
-                    let extrasTotal = 0;
+                    let optionsTotal = 0;
 
-                    qtyInputs.forEach(input => {
-                        const qty = parseInt(input.value) || 0;
-                        const unitPrice = parseFloat(input.dataset.price) || 0;
-                        extrasTotal += (qty * unitPrice * days);
-                    });
+                    // 1. Insurance Calculation & UI Update
+                    const selectedIns = document.querySelector('input[name="acrb_selected_insurance"]:checked');
+                    let insCost = 0;
+                    if (selectedIns && selectedIns.value) {
+                        const price = parseFloat(selectedIns.dataset.price) || 0;
+                        const type = selectedIns.dataset.type;
+                        insCost = (type === 'day' ? price * days : price);
+                        optionsTotal += insCost;
 
-                    if (extrasTotal > 0) {
-                        displayExtrasTotal.textContent = currency + extrasTotal.toFixed(2);
-                        extrasSummaryRow.style.display = 'flex';
+                        insuranceTitle.textContent = selectedIns.value;
+                        insuranceVal.textContent = '+' + currency + insCost.toFixed(2);
+                        insuranceRow.style.display = 'flex';
                     } else {
-                        extrasSummaryRow.style.display = 'none';
+                        insuranceRow.style.display = 'none';
                     }
 
-                    const grandTotal = subtotal + extrasTotal + deposit + insurance;
+                    // 2. Border Crossing Calculation & UI Update
+                    const selectedBorder = document.querySelector('input[name="acrb_selected_border"]:checked');
+                    let borderCost = 0;
+                    if (selectedBorder && selectedBorder.value) {
+                        const fee = parseFloat(selectedBorder.dataset.fee) || 0;
+                        const type = selectedBorder.dataset.type;
+                        borderCost = (type === 'day' ? fee * days : fee);
+                        optionsTotal += borderCost;
 
-                    displayDays.textContent = days + (days === 1 ? ' Day' : ' Days');
+                        borderTitle.textContent = selectedBorder.value + ' Permit';
+                        borderVal.textContent = '+' + currency + borderCost.toFixed(2);
+                        borderRow.style.display = 'flex';
+                    } else {
+                        borderRow.style.display = 'none';
+                    }
+
+                    const grandTotal = subtotal + optionsTotal + deposit + insuranceBase;
+
+                    displayDays.textContent = days + (days === 1 ? ' Day selected' : ' Days selected');
                     displaySubtotal.textContent = currency + subtotal.toFixed(2);
                     displayTotal.textContent = grandTotal.toFixed(2);
                 } else {
-                    displayDays.textContent = '0 Days';
+                    displayDays.textContent = '0 Days selected';
                     displaySubtotal.textContent = currency + '0.00';
-                    extrasSummaryRow.style.display = 'none';
+                    insuranceRow.style.display = 'none';
+                    borderRow.style.display = 'none';
                     displayTotal.textContent = '0.00';
                 }
             }
@@ -990,9 +1087,10 @@ function acrb_car_details_page_shortcode(): string {
             rDate.addEventListener('change', calc);
         }
 
-        qtyInputs.forEach(input => {
-            input.addEventListener('input', calc);
-        });
+        if (pTime && rTime) {
+            pTime.addEventListener('change', calc);
+            rTime.addEventListener('change', calc);
+        }
 
         // Gallery Hero Switcher
         document.querySelectorAll('.acrb-gallery-item').forEach(img => {

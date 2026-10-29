@@ -5,7 +5,7 @@
  * Location: templates/shortcodes/account.php (or shortcodes directory)
  *
  * @package Awesome_Car_Rental
- * @since   3.3.1
+ * @since   4.8.0
  */
 
 declare( strict_types=1 );
@@ -129,7 +129,7 @@ function acrb_render_account_dashboard_shortcode(): string {
     $user_id = $user->ID;
 
     // 3. Dynamic Currency Settings & Formatting
-    $currency_symbol = get_option( 'acrb_currency', '$' );
+    $currency_symbol = get_option( 'acrb_currency', '£' );
     $currency_pos    = get_option( 'acrb_currency_pos', 'left' );
     $rental_unit     = get_option( 'acrb_rental_unit', 'day' );
     $update_msg      = '';
@@ -166,74 +166,42 @@ function acrb_render_account_dashboard_shortcode(): string {
         }
     }
 
-    // 5. Data Extraction: User Bookings
+    // 5. Data Extraction: User Bookings from Custom Database Table
+    global $wpdb;
+    $table_bookings = $wpdb->prefix . 'dev_nahian_bookings';
     $normalized_bookings = array();
 
-    $cpt_bookings = get_posts( array(
-        'post_type'   => 'acrb_bookings',
-        'numberposts' => -1,
-        'post_status' => 'publish',
-        'meta_query'  => array(
-            array(
-                'key'     => 'user_id',
-                'value'   => $user_id,
-                'compare' => '=',
-            ),
-        ),
-        'orderby'     => 'date',
-        'order'       => 'DESC',
-    ) );
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+    $table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_bookings ) );
 
-    if ( ! empty( $cpt_bookings ) ) {
-        foreach ( $cpt_bookings as $b ) {
-            $b_id       = absint( $b->ID );
-            $car_id     = absint( get_post_meta( $b_id, 'car_id', true ) );
-            $raw_price  = get_post_meta( $b_id, 'total_price', true ) ?: get_post_meta( $b_id, 'total_amount', true );
-            $clean_amt  = floatval( preg_replace( '/[^0-9.]/', '', (string) $raw_price ) );
-            $pickup     = (string) get_post_meta( $b_id, 'pickup_date', true );
-            $return_d   = (string) get_post_meta( $b_id, 'return_date', true );
-            $status     = sanitize_key( (string) ( get_post_meta( $b_id, 'status', true ) ?: 'pending' ) );
-            $car_title  = $car_id ? get_the_title( $car_id ) : __( 'Rental Fleet Car', 'awesome-car-rental' );
-
-            $normalized_bookings[] = array(
-                'id'          => $b_id,
-                'code'        => 'ACR-' . $b_id,
-                'car_name'    => $car_title,
-                'pickup_date' => $pickup ?: '—',
-                'return_date' => $return_d ?: '—',
-                'total_amt'   => $clean_amt,
-                'status'      => $status,
-            );
-        }
-    } else {
-        global $wpdb;
-        $table_bookings = $wpdb->prefix . 'dev_nahian_bookings';
+    if ( $table_exists === $table_bookings ) {
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        $table_exists   = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_bookings ) );
+        $db_bookings = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$table_bookings} WHERE customer_email = %s ORDER BY id DESC",
+                $user->user_email
+            ),
+            ARRAY_A
+        );
 
-        if ( $table_exists === $table_bookings ) {
-            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-            $db_bookings = $wpdb->get_results(
-                $wpdb->prepare(
-                    "SELECT * FROM {$table_bookings} WHERE user_id = %d ORDER BY id DESC",
-                    $user_id
-                ),
-                ARRAY_A
-            );
-
-            if ( ! empty( $db_bookings ) ) {
-                foreach ( $db_bookings as $dbb ) {
-                    $b_id = absint( $dbb['id'] );
-                    $normalized_bookings[] = array(
-                        'id'          => $b_id,
-                        'code'        => ! empty( $dbb['booking_code'] ) ? $dbb['booking_code'] : 'ACR-' . $b_id,
-                        'car_name'    => ! empty( $dbb['car_name'] ) ? $dbb['car_name'] : __( 'Fleet Vehicle', 'awesome-car-rental' ),
-                        'pickup_date' => ! empty( $dbb['pickup_date'] ) ? $dbb['pickup_date'] : '—',
-                        'return_date' => ! empty( $dbb['return_date'] ) ? $dbb['return_date'] : '—',
-                        'total_amt'   => floatval( $dbb['total_amount'] ?? 0 ),
-                        'status'      => sanitize_key( (string) ( $dbb['booking_status'] ?? 'pending' ) ),
-                    );
-                }
+        if ( ! empty( $db_bookings ) ) {
+            foreach ( $db_bookings as $dbb ) {
+                $b_id = absint( $dbb['id'] );
+                $normalized_bookings[] = array(
+                    'id'             => $b_id,
+                    'code'           => ! empty( $dbb['booking_code'] ) ? $dbb['booking_code'] : 'ACR-' . $b_id,
+                    'car_name'       => ! empty( $dbb['car_name'] ) ? $dbb['car_name'] : __( 'Fleet Vehicle', 'awesome-car-rental' ),
+                    'pickup_date'    => ! empty( $dbb['pickup_date'] ) ? $dbb['pickup_date'] : '—',
+                    'return_date'    => ! empty( $dbb['return_date'] ) ? $dbb['return_date'] : '—',
+                    'pickup_loc'     => ! empty( $dbb['pickup_location'] ) ? $dbb['pickup_location'] : __( 'Main Terminal', 'awesome-car-rental' ),
+                    'return_loc'     => ! empty( $dbb['return_location'] ) ? $dbb['return_location'] : __( 'Main Terminal', 'awesome-car-rental' ),
+                    'insurance_plan' => ! empty( $dbb['insurance_plan'] ) ? $dbb['insurance_plan'] : '',
+                    'border_permit'  => ! empty( $dbb['border_permit'] ) ? $dbb['border_permit'] : '',
+                    'promo_code'     => ! empty( $dbb['promo_code'] ) ? $dbb['promo_code'] : '',
+                    'payment_method' => ! empty( $dbb['payment_method'] ) ? $dbb['payment_method'] : 'pay_later',
+                    'total_amt'      => floatval( $dbb['total_amount'] ?? 0 ),
+                    'status'         => sanitize_key( (string) ( $dbb['booking_status'] ?? 'pending' ) ),
+                );
             }
         }
     }
@@ -267,7 +235,6 @@ function acrb_render_account_dashboard_shortcode(): string {
             box-sizing: border-box;
         }
 
-        /* SVG Sizing */
         .acrb-icon {
             display: inline-block;
             width: 18px;
@@ -366,7 +333,7 @@ function acrb_render_account_dashboard_shortcode(): string {
             color: #dc2626 !important;
         }
 
-        /* Main Content Container */
+        /* Main Content Area */
         .acrb-acc-content {
             flex: 1;
             min-width: 0;
@@ -568,15 +535,10 @@ function acrb_render_account_dashboard_shortcode(): string {
             letter-spacing: 0.04em;
             display: inline-block;
         }
-        .status-completed, .status-confirmed, .status-active {
+        .status-completed, .status-confirmed, .status-active, .status-pending {
             background: #ecfdf5;
             color: var(--acrb-portal-accent);
             border: 1px solid #a7f3d0;
-        }
-        .status-pending {
-            background: #fffbeb;
-            color: #b45309;
-            border: 1px solid #fde68a;
         }
         .status-cancelled {
             background: #fef2f2;
@@ -800,10 +762,10 @@ function acrb_render_account_dashboard_shortcode(): string {
         }
         .acrb-modal-content {
             background: #ffffff;
-            margin: 6% auto;
+            margin: 4% auto;
             padding: 32px;
             border-radius: 16px;
-            width: 440px;
+            width: 480px;
             max-width: 90%;
             position: relative;
             box-shadow: 0 25px 35px -10px rgba(0, 0, 0, 0.15);
@@ -853,7 +815,7 @@ function acrb_render_account_dashboard_shortcode(): string {
         .acrb-receipt-list {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
             margin-bottom: 20px;
         }
         .acrb-r-item {
@@ -1069,12 +1031,16 @@ function acrb_render_account_dashboard_shortcode(): string {
                 <h2 class="acrb-panel-title"><?php esc_html_e( 'Rental History & Reservations', 'awesome-car-rental' ); ?></h2>
                 
                 <?php if ( ! empty( $normalized_bookings ) ) : foreach ( $normalized_bookings as $booking ) : 
-                    $b_code       = esc_html( $booking['code'] );
-                    $b_car        = esc_html( $booking['car_name'] );
-                    $b_date       = esc_html( $booking['pickup_date'] . ' → ' . $booking['return_date'] );
-                    $b_status     = esc_html( $booking['status'] );
-                    $b_price_disp = $format_price( $booking['total_amt'] );
-                    $status_class = 'status-' . sanitize_html_class( $booking['status'] );
+                    $b_code         = esc_html( $booking['code'] );
+                    $b_car          = esc_html( $booking['car_name'] );
+                    $b_date         = esc_html( $booking['pickup_date'] . ' → ' . $booking['return_date'] );
+                    $b_status       = esc_html( $booking['status'] );
+                    $b_price_disp   = $format_price( $booking['total_amt'] );
+                    $status_class   = 'status-' . sanitize_html_class( $booking['status'] );
+                    $b_insurance    = esc_attr( $booking['insurance_plan'] );
+                    $b_border       = esc_attr( $booking['border_permit'] );
+                    $b_promo        = esc_attr( $booking['promo_code'] );
+                    $b_method       = esc_attr( ucwords( str_replace( '_', ' ', $booking['payment_method'] ) ) );
                 ?>
                 <div class="acrb-booking-card">
                     <div class="acrb-card-main">
@@ -1122,7 +1088,11 @@ function acrb_render_account_dashboard_shortcode(): string {
                                 data-car="<?php echo esc_attr( $b_car ); ?>" 
                                 data-total="<?php echo esc_attr( $b_price_disp ); ?>" 
                                 data-date="<?php echo esc_attr( $b_date ); ?>"
-                                data-status="<?php echo esc_attr( ucfirst( $b_status ) ); ?>">
+                                data-status="<?php echo esc_attr( ucfirst( $b_status ) ); ?>"
+                                data-insurance="<?php echo esc_attr( $b_insurance ); ?>"
+                                data-border="<?php echo esc_attr( $b_border ); ?>"
+                                data-promo="<?php echo esc_attr( $b_promo ); ?>"
+                                data-method="<?php echo esc_attr( $b_method ); ?>">
                             <svg class="acrb-icon" viewBox="0 0 24 24">
                                 <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
                                 <polyline points="14 2 14 8 20 8"></polyline>
@@ -1239,6 +1209,22 @@ function acrb_render_account_dashboard_shortcode(): string {
                     <span><?php esc_html_e( 'Rental Window:', 'awesome-car-rental' ); ?></span>
                     <span id="acrb-m-date" style="color:var(--acrb-portal-secondary);"></span>
                 </div>
+                <div class="acrb-r-item" id="acrb-m-ins-row" style="display:none;">
+                    <span><?php esc_html_e( 'Protection Plan:', 'awesome-car-rental' ); ?></span>
+                    <span id="acrb-m-ins" style="color:var(--acrb-portal-primary); font-weight:700;"></span>
+                </div>
+                <div class="acrb-r-item" id="acrb-m-border-row" style="display:none;">
+                    <span><?php esc_html_e( 'Border Permit:', 'awesome-car-rental' ); ?></span>
+                    <span id="acrb-m-border" style="color:var(--acrb-portal-primary); font-weight:700;"></span>
+                </div>
+                <div class="acrb-r-item" id="acrb-m-promo-row" style="display:none;">
+                    <span><?php esc_html_e( 'Promo Voucher:', 'awesome-car-rental' ); ?></span>
+                    <span id="acrb-m-promo" style="color:var(--acrb-portal-accent); font-weight:700;"></span>
+                </div>
+                <div class="acrb-r-item">
+                    <span><?php esc_html_e( 'Payment Method:', 'awesome-car-rental' ); ?></span>
+                    <span id="acrb-m-method" style="color:var(--acrb-portal-secondary); font-weight:700;"></span>
+                </div>
                 <div class="acrb-r-item">
                     <span><?php esc_html_e( 'Booking Status:', 'awesome-car-rental' ); ?></span>
                     <span id="acrb-m-status" class="acrb-status-pill status-confirmed"></span>
@@ -1291,10 +1277,41 @@ function acrb_render_account_dashboard_shortcode(): string {
                     document.getElementById('acrb-m-car').textContent    = this.getAttribute('data-car');
                     document.getElementById('acrb-m-date').textContent   = this.getAttribute('data-date');
                     document.getElementById('acrb-m-total').textContent  = this.getAttribute('data-total');
+                    document.getElementById('acrb-m-method').textContent = this.getAttribute('data-method');
                     
                     const statusElem = document.getElementById('acrb-m-status');
                     if (statusElem) {
                         statusElem.textContent = this.getAttribute('data-status');
+                    }
+
+                    // Insurance
+                    const insVal = this.getAttribute('data-insurance');
+                    const insRow = document.getElementById('acrb-m-ins-row');
+                    if (insVal) {
+                        document.getElementById('acrb-m-ins').textContent = insVal;
+                        insRow.style.display = 'flex';
+                    } else {
+                        insRow.style.display = 'none';
+                    }
+
+                    // Border
+                    const borderVal = this.getAttribute('data-border');
+                    const borderRow = document.getElementById('acrb-m-border-row');
+                    if (borderVal) {
+                        document.getElementById('acrb-m-border').textContent = borderVal + ' Permit';
+                        borderRow.style.display = 'flex';
+                    } else {
+                        borderRow.style.display = 'none';
+                    }
+
+                    // Promo
+                    const promoVal = this.getAttribute('data-promo');
+                    const promoRow = document.getElementById('acrb-m-promo-row');
+                    if (promoVal) {
+                        document.getElementById('acrb-m-promo').textContent = promoVal;
+                        promoRow.style.display = 'flex';
+                    } else {
+                        promoRow.style.display = 'none';
                     }
 
                     modal.style.display = 'block';

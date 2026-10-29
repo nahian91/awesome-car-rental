@@ -1,10 +1,10 @@
 <?php
 /**
- * ACRB HIGH-END SAAS BOOKING VIEW (Custom Architecture with Meta Fallback)
- * Location: admin/bookings/acrb-bookings-view.php
+ * ACRB HIGH-END SAAS BOOKING DOSSIER VIEW (Custom Database Architecture)
+ * Location: admin/bookings/bookings-view.php
  *
  * @package Awesome_Car_Rental
- * @since   1.6.5
+ * @since   4.8.0
  */
 
 declare( strict_types=1 );
@@ -15,154 +15,263 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 global $wpdb;
 
-$table_bookings = $wpdb->prefix . 'dev_nahian_bookings';
-$table_cars     = $wpdb->prefix . 'dev_nahian_cars';
+$acrb_table_bookings = $wpdb->prefix . 'dev_nahian_bookings';
+$acrb_table_cars     = $wpdb->prefix . 'dev_nahian_cars';
+$acrb_table_promos   = $wpdb->prefix . 'dev_nahian_promo_codes';
 
 // 1. DATA RETRIEVAL
+// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 $acrb_booking_id = isset( $_GET['booking_id'] ) ? absint( wp_unslash( $_GET['booking_id'] ) ) : 0;
 
 if ( $acrb_booking_id <= 0 ) {
     wp_die( esc_html__( 'Invalid booking ID provided.', 'awesome-car-rental' ) );
 }
 
-// Check if booking exists in Custom DB table or as WordPress Post (`acrb_bookings`)
-$booking = null;
+// Fetch booking record directly from custom database table.
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-$booking = $wpdb->get_row(
-    $wpdb->prepare( "SELECT * FROM {$table_bookings} WHERE id = %d", $acrb_booking_id ),
+$acrb_booking = $wpdb->get_row(
+    $wpdb->prepare(
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        "SELECT * FROM {$acrb_table_bookings} WHERE id = %d",
+        $acrb_booking_id
+    ),
     ARRAY_A
 );
 
-$is_wp_post = false;
-if ( ! $booking && 'acrb_bookings' === get_post_type( $acrb_booking_id ) ) {
-    $is_wp_post = true;
-    $post_obj   = get_post( $acrb_booking_id );
-    $car_id     = absint( get_post_meta( $acrb_booking_id, 'car_id', true ) );
-    
-    $booking = array(
-        'id'             => $acrb_booking_id,
-        'booking_code'   => 'ACR-' . $acrb_booking_id,
-        'customer_name'  => get_post_meta( $acrb_booking_id, 'customer_name', true ) ?: __( 'Guest Client', 'awesome-car-rental' ),
-        'customer_email' => get_post_meta( $acrb_booking_id, 'customer_email', true ) ?: '',
-        'customer_phone' => get_post_meta( $acrb_booking_id, 'customer_phone', true ) ?: '',
-        'pickup_date'    => get_post_meta( $acrb_booking_id, 'pickup_date', true ) ?: '',
-        'return_date'    => get_post_meta( $acrb_booking_id, 'return_date', true ) ?: '',
-        'booking_status' => get_post_meta( $acrb_booking_id, 'status', true ) ?: 'pending',
-        'total_amount'   => floatval( get_post_meta( $acrb_booking_id, 'total_price', true ) ?: 0 ),
-        'car_id'         => $car_id,
-        'car_name'       => $car_id ? get_the_title( $car_id ) : __( 'Fleet Vehicle', 'awesome-car-rental' ),
-        'created_at'     => $post_obj ? $post_obj->post_date : '',
-    );
-}
-
-if ( ! $booking ) {
-    wp_die( esc_html__( 'Booking record not found in database or post storage.', 'awesome-car-rental' ) );
+if ( ! $acrb_booking ) {
+    wp_die( esc_html__( 'Booking record not found in custom database table.', 'awesome-car-rental' ) );
 }
 
 // 2. FETCH RECORD FIELDS
-$acrb_booking_code   = $booking['booking_code'] ?? ( 'ACR-' . $acrb_booking_id );
-$acrb_customer_name  = $booking['customer_name'] ?? __( 'Guest Client', 'awesome-car-rental' );
-$acrb_customer_email = $booking['customer_email'] ?? '';
-$acrb_customer_phone = $booking['customer_phone'] ?? '';
-$acrb_pickup_date    = $booking['pickup_date'] ?? '';
-$acrb_return_date    = $booking['return_date'] ?? '';
-$acrb_status         = strtolower( $booking['booking_status'] ?? 'pending' );
-$acrb_total          = floatval( $booking['total_amount'] ?? 0 );
-$acrb_car_id         = absint( $booking['car_id'] ?? 0 );
-$acrb_car_title      = $booking['car_name'] ?? __( 'Fleet Vehicle', 'awesome-car-rental' );
-$acrb_created_at     = $booking['created_at'] ?? '';
+$acrb_booking_code   = $acrb_booking['booking_code'] ?? ( 'ACR-' . $acrb_booking_id );
+$acrb_customer_name  = $acrb_booking['customer_name'] ?? __( 'Guest Client', 'awesome-car-rental' );
+$acrb_customer_email = $acrb_booking['customer_email'] ?? '';
+$acrb_customer_phone = $acrb_booking['customer_phone'] ?? '';
+$acrb_pickup_date    = $acrb_booking['pickup_date'] ?? '';
+$acrb_return_date    = $acrb_booking['return_date'] ?? '';
+$acrb_pickup_loc     = $acrb_booking['pickup_location'] ?? __( 'Main Terminal', 'awesome-car-rental' );
+$acrb_return_loc     = $acrb_booking['return_location'] ?? __( 'Main Terminal', 'awesome-car-rental' );
+$acrb_insurance      = trim( (string) ( $acrb_booking['insurance_plan'] ?? '' ) );
+$acrb_border         = trim( (string) ( $acrb_booking['border_permit'] ?? '' ) );
+$acrb_promo_code     = trim( (string) ( $acrb_booking['promo_code'] ?? '' ) );
+$acrb_status         = strtolower( $acrb_booking['booking_status'] ?? 'pending' );
+$acrb_total          = floatval( $acrb_booking['total_amount'] ?? 0 );
+$acrb_method_raw     = $acrb_booking['payment_method'] ?? 'pay_later';
+$acrb_car_id         = absint( $acrb_booking['car_id'] ?? 0 );
+$acrb_car_title      = $acrb_booking['car_name'] ?? __( 'Fleet Vehicle', 'awesome-car-rental' );
+$acrb_created_at     = $acrb_booking['created_at'] ?? '';
 $acrb_currency       = get_option( 'acrb_currency', '£' );
+$acrb_rental_unit    = get_option( 'acrb_rental_unit', 'day' );
 
-// Fetch associated vehicle specs if present
-$car_meta = null;
+// Map Payment Method Key to Readable Label
+$method_labels = array(
+    'pay_later' => __( 'Book Now, Pay Later', 'awesome-car-rental' ),
+    'bank'      => __( 'Direct Bank Transfer (BACS)', 'awesome-car-rental' ),
+    'cash'      => __( 'Cash on Pickup', 'awesome-car-rental' ),
+);
+$acrb_method = $method_labels[ $acrb_method_raw ] ?? ucwords( str_replace( '_', ' ', $acrb_method_raw ) );
+
+// Fetch associated vehicle specs directly from custom cars table.
+$acrb_car_meta = null;
 if ( $acrb_car_id > 0 ) {
-    if ( 'acrb_cars' === get_post_type( $acrb_car_id ) ) {
-        $car_meta = array(
-            'image'        => get_post_thumbnail_id( $acrb_car_id ),
-            'transmission' => get_post_meta( $acrb_car_id, 'acrb_transmission', true ),
-            'fuel'         => get_post_meta( $acrb_car_id, 'acrb_fuel_type', true ),
-            'plate'        => get_post_meta( $acrb_car_id, 'vin', true ),
-        );
-    } else {
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-        $car_meta = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table_cars} WHERE id = %d", $acrb_car_id ), ARRAY_A );
-    }
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+    $acrb_car_meta = $wpdb->get_row(
+        $wpdb->prepare(
+            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            "SELECT * FROM {$acrb_table_cars} WHERE id = %d",
+            $acrb_car_id
+        ),
+        ARRAY_A
+    );
 }
 
-// Compute Duration in Days & Daily Rate
-$rental_days = 1;
+// Compute Duration in Days & Daily Rate.
+$acrb_rental_days = 1;
 if ( ! empty( $acrb_pickup_date ) && ! empty( $acrb_return_date ) ) {
     try {
-        $start_dt = new DateTime( $acrb_pickup_date );
-        $end_dt   = new DateTime( $acrb_return_date );
-        $rental_days = max( 1, (int) $start_dt->diff( $end_dt )->days );
+        $acrb_start_dt    = new DateTime( $acrb_pickup_date );
+        $acrb_end_dt      = new DateTime( $acrb_return_date );
+        $acrb_diff_hrs    = ( $acrb_end_dt->getTimestamp() - $acrb_start_dt->getTimestamp() ) / 3600;
+        $acrb_rental_days = max( 1, (int) ceil( $acrb_diff_hrs / 24 ) );
     } catch ( Exception $e ) {
-        $rental_days = 1;
+        $acrb_rental_days = 1;
     }
 }
-$daily_rate   = $acrb_total > 0 ? ( $acrb_total / $rental_days ) : 0;
-$phone_digits = preg_replace( '/[^0-9]/', '', $acrb_customer_phone );
+$acrb_daily_rate   = $acrb_total > 0 ? ( $acrb_total / $acrb_rental_days ) : 0;
+$acrb_phone_digits = preg_replace( '/[^0-9]/', '', $acrb_customer_phone );
+
+// Lookup Promo details if applied
+$promo_display = '';
+if ( ! empty( $acrb_promo_code ) ) {
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+    $p_record = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$acrb_table_promos} WHERE code = %s", $acrb_promo_code ), ARRAY_A );
+    if ( $p_record ) {
+        $p_type = $p_record['discount_type'];
+        $p_val  = floatval( $p_record['discount_value'] );
+        $promo_display = $acrb_promo_code . ' (' . ( 'percentage' === $p_type ? $p_val . '%' : $acrb_currency . number_format( $p_val, 2 ) ) . ' OFF)';
+    } else {
+        $promo_display = $acrb_promo_code;
+    }
+}
 ?>
 
-<div class="acrb-dossier-wrap">
+<div class="acrb-dossier-wrap" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1e293b;">
 
     <!-- Summary Hero Banner -->
     <div class="acrb-summary-banner" style="display: flex; justify-content: space-between; align-items: center; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px 28px; margin-bottom: 24px; box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);">
         <div class="acrb-client-badge-block" style="display: flex; align-items: center; gap: 16px;">
-            <div class="acrb-client-initial" style="width: 54px; height: 54px; background: #eff6ml; background: #eff6ff; color: #2563eb; border-radius: 14px; font-size: 22px; font-weight: 800; display: flex; align-items: center; justify-content: center;">
+            <div class="acrb-client-initial" style="width: 54px; height: 54px; background: #eff6ff; color: #2563eb; border-radius: 14px; font-size: 22px; font-weight: 800; display: flex; align-items: center; justify-content: center;">
                 <?php echo esc_html( strtoupper( mb_substr( trim( $acrb_customer_name ), 0, 1 ) ) ?: 'G' ); ?>
             </div>
             <div>
                 <h3 style="margin: 0 0 4px; font-size: 18px; font-weight: 800; color: #0f172a;"><?php echo esc_html( $acrb_customer_name ); ?></h3>
                 <span class="acrb-code-pill" style="font-family: monospace; font-size: 12px; background: #f1f5f9; padding: 2px 8px; border-radius: 6px; color: #475569; font-weight: 700;"><?php echo esc_html( $acrb_booking_code ); ?></span>
+                <span style="font-size: 12px; color: #64748b; margin-left: 8px;">Logged: <?php echo esc_html( $acrb_created_at ); ?></span>
             </div>
         </div>
 
         <div class="acrb-amount-callout" style="text-align: right;">
-            <span style="display: block; font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; margin-bottom: 2px;"><?php esc_html_e( 'Total Amount', 'awesome-car-rental' ); ?></span>
-            <strong style="font-size: 24px; font-weight: 900; color: #0f172a; display: block; margin-bottom: 6px;"><?php echo esc_html( $acrb_currency . number_format( $acrb_total, 2 ) ); ?></strong>
-            <span class="acrb-status-badge status-<?php echo esc_attr( $acrb_status ); ?>" style="display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: #fef3c7; color: #d97706;">
+            <span style="display: block; font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; margin-bottom: 2px;"><?php esc_html_e( 'Total Amount Due', 'awesome-car-rental' ); ?></span>
+            <strong style="font-size: 26px; font-weight: 900; color: #0f172a; display: block; margin-bottom: 6px;"><?php echo esc_html( $acrb_currency . number_format( $acrb_total, 2 ) ); ?></strong>
+            <span class="acrb-status-badge status-<?php echo esc_attr( $acrb_status ); ?>" style="display: inline-block; padding: 3px 12px; border-radius: 99px; font-size: 11.5px; font-weight: 800; text-transform: uppercase; background: #fef3c7; color: #d97706;">
                 <?php echo esc_html( ucfirst( str_replace( '_', ' ', $acrb_status ) ) ); ?>
             </span>
         </div>
     </div>
 
     <!-- 2-Column Split Content -->
-    <div class="acrb-dossier-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 24px;">
+    <div class="acrb-dossier-grid" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px;">
 
-        <!-- Left Side: Route, Customer & Billing -->
+        <!-- Left Side: Route, Financial Breakdown & Guest Details -->
         <div class="acrb-dossier-col" style="display: flex; flex-direction: column; gap: 24px;">
 
             <!-- Route & Schedule -->
             <div class="acrb-dossier-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);">
                 <div class="acrb-card-heading" style="border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 18px;">
                     <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                        <span class="dashicons dashicons-location" style="color: #4f46e5;"></span> <?php esc_html_e( 'Rental Route & Schedule', 'awesome-car-rental' ); ?>
+                        <span class="dashicons dashicons-location" style="color: #4f46e5;"></span> <?php esc_html_e( 'Travel Itinerary & Schedule', 'awesome-car-rental' ); ?>
                     </h4>
                 </div>
 
                 <div class="acrb-route-flow" style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0;">
                     <div class="acrb-flow-step">
-                        <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;"><?php esc_html_e( 'Pick-up', 'awesome-car-rental' ); ?></span>
+                        <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;"><?php esc_html_e( 'Pick-up Schedule', 'awesome-car-rental' ); ?></span>
                         <strong style="font-size: 13px; color: #0f172a; display: block;"><?php echo esc_html( $acrb_pickup_date ?: '—' ); ?></strong>
+                        <span style="font-size: 11px; color: #475569; display: block; margin-top: 2px;">(<?php echo esc_html( $acrb_pickup_loc ); ?>)</span>
                     </div>
 
                     <div class="acrb-route-mid" style="text-align: center;">
-                        <span style="background: #eef2ff; color: #4f46e5; padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; display: inline-block;"><?php echo absint( $rental_days ); ?> <?php echo esc_html( _n( 'Day', 'Days', $rental_days, 'awesome-car-rental' ) ); ?></span>
+                        <span style="background: #eef2ff; color: #4f46e5; padding: 4px 12px; border-radius: 99px; font-size: 11.5px; font-weight: 800; display: inline-block;"><?php echo absint( $acrb_rental_days ); ?> <?php echo esc_html( ucfirst( $acrb_rental_unit ) ); ?>(s)</span>
                     </div>
 
                     <div class="acrb-flow-step" style="text-align: right;">
-                        <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;"><?php esc_html_e( 'Return', 'awesome-car-rental' ); ?></span>
+                        <span style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 2px;"><?php esc_html_e( 'Return Schedule', 'awesome-car-rental' ); ?></span>
                         <strong style="font-size: 13px; color: #0f172a; display: block;"><?php echo esc_html( $acrb_return_date ?: '—' ); ?></strong>
+                        <span style="font-size: 11px; color: #475569; display: block; margin-top: 2px;">(<?php echo esc_html( $acrb_return_loc ); ?>)</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Client & Billing Information -->
+            <!-- Itemized Financial Breakdown Box -->
             <div class="acrb-dossier-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);">
                 <div class="acrb-card-heading" style="border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 18px;">
                     <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                        <span class="dashicons dashicons-admin-users" style="color: #4f46e5;"></span> <?php esc_html_e( 'Client & Billing Details', 'awesome-car-rental' ); ?>
+                        <span class="dashicons dashicons-money-alt" style="color: #059669;"></span> <?php esc_html_e( 'Itemized Financial Breakdown', 'awesome-car-rental' ); ?>
+                    </h4>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 12px 0; font-size: 13.5px; color: #334155; font-weight: 700;">
+                            🚗 <?php echo esc_html( $acrb_car_title ); ?>
+                            <span style="display: block; font-size: 11px; color: #64748b; font-weight: 500;"><?php echo absint( $acrb_rental_days ); ?> <?php echo esc_html( ucfirst( $acrb_rental_unit ) ); ?>(s) × <?php echo esc_html( $acrb_currency . number_format( $acrb_daily_rate, 2 ) ); ?></span>
+                        </td>
+                        <td style="padding: 12px 0; text-align: right; font-weight: 800; color: #0f172a;"><?php echo esc_html( $acrb_currency . number_format( $acrb_total, 2 ) ); ?></td>
+                    </tr>
+
+                    <?php if ( ! empty( $acrb_insurance ) ) : ?>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 12px 0; font-size: 13.5px; color: #334155; font-weight: 700;">
+                            🛡️ <?php echo esc_html( $acrb_insurance ); ?>
+                            <span style="display: block; font-size: 11px; color: #64748b; font-weight: 500;"><?php esc_html_e( 'Protection Plan', 'awesome-car-rental' ); ?></span>
+                        </td>
+                        <td style="padding: 12px 0; text-align: right; font-weight: 800; color: #2563eb;"><?php esc_html_e( 'Included', 'awesome-car-rental' ); ?></td>
+                    </tr>
+                    <?php endif; ?>
+
+                    <?php if ( ! empty( $acrb_border ) ) : ?>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 12px 0; font-size: 13.5px; color: #334155; font-weight: 700;">
+                            🌐 <?php echo esc_html( $acrb_border ); ?> Permit
+                            <span style="display: block; font-size: 11px; color: #64748b; font-weight: 500;"><?php esc_html_e( 'Cross-Border Travel Permit', 'awesome-car-rental' ); ?></span>
+                        </td>
+                        <td style="padding: 12px 0; text-align: right; font-weight: 800; color: #2563eb;"><?php esc_html_e( 'Included', 'awesome-car-rental' ); ?></td>
+                    </tr>
+                    <?php endif; ?>
+
+                    <?php if ( ! empty( $promo_display ) ) : ?>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 12px 0; font-size: 13.5px; color: #059669; font-weight: 700;">
+                            🏷️ Promo Code Voucher
+                            <span style="display: block; font-size: 11px; color: #64748b; font-weight: 500;"><?php echo esc_html( $promo_display ); ?></span>
+                        </td>
+                        <td style="padding: 12px 0; text-align: right; font-weight: 900; color: #059669;"><?php esc_html_e( 'Applied', 'awesome-car-rental' ); ?></td>
+                    </tr>
+                    <?php endif; ?>
+                </table>
+            </div>
+
+        </div>
+
+        <!-- Right Side: Assigned Vehicle, Guest Info & Dispatch Actions -->
+        <div class="acrb-dossier-col" style="display: flex; flex-direction: column; gap: 24px;">
+
+            <!-- Assigned Car Card -->
+            <div class="acrb-dossier-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);">
+                <div class="acrb-card-heading" style="border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 18px;">
+                    <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        <span class="dashicons dashicons-car" style="color: #4f46e5;"></span> <?php esc_html_e( 'Assigned Vehicle', 'awesome-car-rental' ); ?>
+                    </h4>
+                </div>
+
+                <div class="acrb-vehicle-frame" style="display: flex; align-items: center; gap: 14px; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <?php
+                    $acrb_img_src = '';
+                    if ( $acrb_car_meta && ! empty( $acrb_car_meta['image'] ) ) {
+                        $raw_img = $acrb_car_meta['image'];
+                        if ( is_numeric( $raw_img ) && absint( $raw_img ) > 0 ) {
+                            $acrb_img_src = wp_get_attachment_image_url( absint( $raw_img ), 'thumbnail' ) ?: '';
+                        } elseif ( filter_var( $raw_img, FILTER_VALIDATE_URL ) ) {
+                            $acrb_img_src = $raw_img;
+                        }
+                    }
+                    ?>
+
+                    <?php if ( ! empty( $acrb_img_src ) ) : ?>
+                        <img src="<?php echo esc_url( $acrb_img_src ); ?>" alt="<?php echo esc_attr( $acrb_car_title ); ?>" style="width: 70px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #cbd5e1;">
+                    <?php else : ?>
+                        <div style="width: 70px; height: 50px; background: #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #64748b;">
+                            <span class="dashicons dashicons-car"></span>
+                        </div>
+                    <?php endif; ?>
+
+                    <div>
+                        <strong style="display: block; font-size: 14px; color: #0f172a;"><?php echo esc_html( $acrb_car_title ); ?></strong>
+                        <span style="font-size: 12px; color: #64748b;">
+                            <?php
+                            /* translators: %d: Associated vehicle ID */
+                            printf( esc_html__( 'Vehicle ID: #%d', 'awesome-car-rental' ), absint( $acrb_car_id ) );
+                            ?>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client & Payment Information -->
+            <div class="acrb-dossier-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);">
+                <div class="acrb-card-heading" style="border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 18px;">
+                    <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        <span class="dashicons dashicons-admin-users" style="color: #4f46e5;"></span> <?php esc_html_e( 'Client & Settlement', 'awesome-car-rental' ); ?>
                     </h4>
                 </div>
 
@@ -179,51 +288,9 @@ $phone_digits = preg_replace( '/[^0-9]/', '', $acrb_customer_phone );
                         <span style="color: #64748b; font-weight: 600;"><?php esc_html_e( 'Phone Number', 'awesome-car-rental' ); ?></span>
                         <strong style="color: #1e293b;"><?php echo esc_html( $acrb_customer_phone ?: '—' ); ?></strong>
                     </div>
-                    <div class="acrb-data-row" style="display: flex; justify-content: space-between; font-size: 13.5px; border-bottom: 1px solid #f8fafc; padding-bottom: 8px;">
-                        <span style="color: #64748b; font-weight: 600;"><?php esc_html_e( 'Rate Calculation', 'awesome-car-rental' ); ?></span>
-                        <strong style="color: #1e293b;"><?php echo esc_html( $acrb_currency . number_format( $daily_rate, 2 ) ); ?> / <?php esc_html_e( 'day', 'awesome-car-rental' ); ?></strong>
-                    </div>
-                    <div class="acrb-data-row" style="display: flex; justify-content: space-between; font-size: 14px;">
-                        <span style="color: #0f172a; font-weight: 800;"><?php esc_html_e( 'Grand Total', 'awesome-car-rental' ); ?></span>
-                        <strong style="color: #059669; font-size: 16px;"><?php echo esc_html( $acrb_currency . number_format( $acrb_total, 2 ) ); ?></strong>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Right Side: Assigned Vehicle & Contact Actions -->
-        <div class="acrb-dossier-col" style="display: flex; flex-direction: column; gap: 24px;">
-
-            <!-- Assigned Car Card -->
-            <div class="acrb-dossier-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);">
-                <div class="acrb-card-heading" style="border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 18px;">
-                    <h4 style="margin: 0; font-size: 14px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-                        <span class="dashicons dashicons-car" style="color: #4f46e5;"></span> <?php esc_html_e( 'Assigned Vehicle', 'awesome-car-rental' ); ?>
-                    </h4>
-                </div>
-
-                <div class="acrb-vehicle-frame" style="display: flex; align-items: center; gap: 14px; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 16px;">
-                    <?php
-                    $img_src = '';
-                    if ( $car_meta && ! empty( $car_meta['image'] ) ) {
-                        $img_src = is_numeric( $car_meta['image'] ) ? wp_get_attachment_url( (int) $car_meta['image'] ) : $car_meta['image'];
-                    } elseif ( $acrb_car_id > 0 ) {
-                        $img_src = get_the_post_thumbnail_url( $acrb_car_id, 'thumbnail' );
-                    }
-                    ?>
-
-                    <?php if ( ! empty( $img_src ) ) : ?>
-                        <img src="<?php echo esc_url( $img_src ); ?>" alt="<?php echo esc_attr( $acrb_car_title ); ?>" style="width: 70px; height: 50px; object-fit: cover; border-radius: 8px; border: 1px solid #cbd5e1;">
-                    <?php else : ?>
-                        <div style="width: 70px; height: 50px; background: #e2e8f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #64748b;">
-                            <span class="dashicons dashicons-car"></span>
-                        </div>
-                    <?php endif; ?>
-
-                    <div>
-                        <strong style="display: block; font-size: 14px; color: #0f172a;"><?php echo esc_html( $acrb_car_title ); ?></strong>
-                        <span style="font-size: 12px; color: #64748b;"><?php printf( esc_html__( 'Vehicle ID: #%d', 'awesome-car-rental' ), absint( $acrb_car_id ) ); ?></span>
+                    <div class="acrb-data-row" style="display: flex; justify-content: space-between; font-size: 13.5px;">
+                        <span style="color: #64748b; font-weight: 600;"><?php esc_html_e( 'Settlement Method', 'awesome-car-rental' ); ?></span>
+                        <strong style="color: #2563eb;">💳 <?php echo esc_html( $acrb_method ); ?></strong>
                     </div>
                 </div>
             </div>
@@ -244,8 +311,8 @@ $phone_digits = preg_replace( '/[^0-9]/', '', $acrb_customer_phone );
                         </a>
                     <?php endif; ?>
 
-                    <?php if ( ! empty( $phone_digits ) ) : ?>
-                        <a href="https://wa.me/<?php echo esc_attr( $phone_digits ); ?>" target="_blank" rel="noopener noreferrer" class="acrb-comms-btn acrb-btn-wa" style="display: flex; align-items: center; gap: 10px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 12px 16px; border-radius: 10px; text-decoration: none; color: #047857; font-weight: 700; font-size: 13px;">
+                    <?php if ( ! empty( $acrb_phone_digits ) ) : ?>
+                        <a href="https://wa.me/<?php echo esc_attr( $acrb_phone_digits ); ?>" target="_blank" rel="noopener noreferrer" class="acrb-comms-btn acrb-btn-wa" style="display: flex; align-items: center; gap: 10px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 12px 16px; border-radius: 10px; text-decoration: none; color: #047857; font-weight: 700; font-size: 13px;">
                             <span class="dashicons dashicons-whatsapp" style="color: #059669;"></span>
                             <span><?php esc_html_e( 'Message on WhatsApp', 'awesome-car-rental' ); ?></span>
                         </a>

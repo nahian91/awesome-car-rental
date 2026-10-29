@@ -4,7 +4,7 @@
  * Location: templates/shortcodes/register.php (or shortcodes directory)
  *
  * @package Awesome_Car_Rental
- * @since   3.3.6
+ * @since   4.8.0
  */
 
 declare( strict_types=1 );
@@ -26,15 +26,16 @@ function acrb_handle_ajax_registration(): void {
     $username  = isset( $_POST['username'] ) ? sanitize_user( wp_unslash( $_POST['username'] ) ) : '';
     $email     = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
     
-    // Password must be unslashed but NOT sanitized to preserve special characters
+    // Passwords must be unslashed but NOT sanitized to preserve special characters
     // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
     $password  = isset( $_POST['password'] ) ? wp_unslash( $_POST['password'] ) : '';
+    // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+    $cpassword = isset( $_POST['cpassword'] ) ? wp_unslash( $_POST['cpassword'] ) : '';
     
     $full_name = isset( $_POST['full_name'] ) ? sanitize_text_field( wp_unslash( $_POST['full_name'] ) ) : '';
     $phone     = isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '';
-    $address   = isset( $_POST['address'] ) ? sanitize_textarea_field( wp_unslash( $_POST['address'] ) ) : '';
 
-    if ( empty( $username ) || empty( $email ) || empty( $password ) ) {
+    if ( empty( $username ) || empty( $email ) || empty( $password ) || empty( $cpassword ) ) {
         wp_send_json_error( esc_html__( 'Please fill out all required registration fields.', 'awesome-car-rental' ) );
     }
     if ( username_exists( $username ) ) {
@@ -49,6 +50,9 @@ function acrb_handle_ajax_registration(): void {
     if ( strlen( $password ) < 6 ) {
         wp_send_json_error( esc_html__( 'Password must be at least 6 characters long.', 'awesome-car-rental' ) );
     }
+    if ( $password !== $cpassword ) {
+        wp_send_json_error( esc_html__( 'The passwords provided do not match.', 'awesome-car-rental' ) );
+    }
 
     $user_id = wp_create_user( $username, $password, $email );
 
@@ -60,9 +64,7 @@ function acrb_handle_ajax_registration(): void {
         ) );
         
         update_user_meta( $user_id, 'billing_phone', $phone );
-        update_user_meta( $user_id, 'billing_address_1', $address );
         update_user_meta( $user_id, 'acrb_user_phone', $phone );
-        update_user_meta( $user_id, 'acrb_user_address', $address );
         
         wp_set_current_user( $user_id );
         wp_set_auth_cookie( $user_id );
@@ -131,7 +133,6 @@ function acrb_render_register_shortcode(): string {
             box-sizing: border-box;
         }
 
-        /* SVG Icon Standards */
         .acrb-reg-icon {
             display: inline-block;
             width: 18px;
@@ -169,7 +170,6 @@ function acrb_render_register_shortcode(): string {
             margin: 0 0 24px 0;
         }
 
-        /* Feature List */
         .acrb-info-list {
             list-style: none;
             padding: 0;
@@ -227,9 +227,10 @@ function acrb_render_register_shortcode(): string {
             color: var(--acrb-reg-text);
             margin-bottom: 6px;
         }
-        .acrb-reg-field input,
-        .acrb-reg-field textarea {
+        .acrb-reg-field input {
             width: 100% !important;
+            height: 42px !important;
+            padding: 0 14px !important;
             border: 1px solid #cbd5e1 !important;
             border-radius: 8px !important;
             font-size: 13.5px !important;
@@ -238,24 +239,13 @@ function acrb_render_register_shortcode(): string {
             box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02) !important;
             transition: border-color 0.15s ease, background-color 0.15s ease !important;
             font-family: inherit !important;
-        }
-        .acrb-reg-field input {
-            height: 42px !important;
-            padding: 0 14px !important;
             line-height: 40px !important;
         }
-        .acrb-reg-field textarea {
-            padding: 12px 14px !important;
-            height: auto !important;
-            resize: vertical;
-        }
-        .acrb-reg-field input:hover,
-        .acrb-reg-field textarea:hover {
+        .acrb-reg-field input:hover {
             border-color: #94a3b8 !important;
             background: #ffffff !important;
         }
-        .acrb-reg-field input:focus,
-        .acrb-reg-field textarea:focus {
+        .acrb-reg-field input:focus {
             background: #ffffff !important;
             border-color: var(--acrb-reg-primary) !important;
             box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08) !important;
@@ -404,13 +394,13 @@ function acrb_render_register_shortcode(): string {
                         <label for="acrb_reg_email"><?php esc_html_e( 'Email Address', 'awesome-car-rental' ); ?></label>
                         <input type="email" id="acrb_reg_email" placeholder="john@example.com" required autocomplete="email">
                     </div>
-                    <div class="acrb-reg-field acrb-reg-full">
-                        <label for="acrb_reg_address"><?php esc_html_e( 'Delivery / Billing Address', 'awesome-car-rental' ); ?></label>
-                        <textarea id="acrb_reg_address" rows="2" placeholder="Street, City, Postcode" required autocomplete="street-address"></textarea>
+                    <div class="acrb-reg-field">
+                        <label for="acrb_reg_pass"><?php esc_html_e( 'Secure Password (Min. 6 chars)', 'awesome-car-rental' ); ?></label>
+                        <input type="password" id="acrb_reg_pass" placeholder="••••••••" required minlength="6" autocomplete="new-password">
                     </div>
-                    <div class="acrb-reg-field acrb-reg-full">
-                        <label for="acrb_reg_pass"><?php esc_html_e( 'Secure Password', 'awesome-car-rental' ); ?></label>
-                        <input type="password" id="acrb_reg_pass" placeholder="••••••••" required autocomplete="new-password">
+                    <div class="acrb-reg-field">
+                        <label for="acrb_reg_cpass"><?php esc_html_e( 'Confirm Password', 'awesome-car-rental' ); ?></label>
+                        <input type="password" id="acrb_reg_cpass" placeholder="••••••••" required minlength="6" autocomplete="new-password">
                     </div>
                 </div>
 
@@ -441,6 +431,19 @@ function acrb_render_register_shortcode(): string {
             const btn = $('#acrb-reg-submit');
             const msg = $('#acrb-reg-msg');
             
+            const pass = $('#acrb_reg_pass').val();
+            const cpass = $('#acrb_reg_cpass').val();
+
+            if (pass.length < 6) {
+                msg.removeClass('alert-success').addClass('alert-error').text('<?php echo esc_js( __( 'Password must be at least 6 characters long.', 'awesome-car-rental' ) ); ?>').fadeIn();
+                return;
+            }
+
+            if (pass !== cpass) {
+                msg.removeClass('alert-success').addClass('alert-error').text('<?php echo esc_js( __( 'The passwords provided do not match.', 'awesome-car-rental' ) ); ?>').fadeIn();
+                return;
+            }
+            
             btn.prop('disabled', true).text('<?php echo esc_js( __( 'Creating Account...', 'awesome-car-rental' ) ); ?>');
             msg.hide().removeClass('alert-error alert-success');
 
@@ -449,10 +452,10 @@ function acrb_render_register_shortcode(): string {
                 security: $('#acrb_reg_nonce').val(),
                 username: $('#acrb_reg_user').val(),
                 email: $('#acrb_reg_email').val(),
-                password: $('#acrb_reg_pass').val(),
+                password: pass,
+                cpassword: cpass,
                 full_name: $('#acrb_reg_fullname').val(),
-                phone: $('#acrb_reg_phone').val(),
-                address: $('#acrb_reg_address').val()
+                phone: $('#acrb_reg_phone').val()
             };
 
             $.post('<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>', data, function(res) {

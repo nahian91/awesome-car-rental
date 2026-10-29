@@ -15,39 +15,43 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 global $wpdb;
 
-$table_bookings = $wpdb->prefix . 'dev_nahian_bookings';
+$acrb_table_bookings = $wpdb->prefix . 'dev_nahian_bookings';
 
-// 1. DATA PREP (Prefixed variables to avoid Global Namespace pollution)
+// 1. DATA PREP (Prefixed variables to avoid Global Namespace pollution).
 $acrb_booking_id = isset( $booking_id ) ? absint( $booking_id ) : 0;
 
-// Fetch record directly from the custom database table
+// Fetch record directly from the custom database table.
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-$booking = $wpdb->get_row(
-	$wpdb->prepare( "SELECT * FROM {$table_bookings} WHERE id = %d", $acrb_booking_id ),
+$acrb_booking = $wpdb->get_row(
+	$wpdb->prepare(
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		"SELECT * FROM {$acrb_table_bookings} WHERE id = %d",
+		$acrb_booking_id
+	),
 	ARRAY_A
 );
 
-if ( ! $booking ) {
+if ( ! $acrb_booking ) {
 	wp_die( esc_html__( 'Invalid booking record or resource not found.', 'awesome-car-rental' ) );
 }
 
-$acrb_customer_name  = $booking['customer_name'] ?? 'Guest';
-$acrb_customer_phone = $booking['customer_phone'] ?? 'N/A';
-$acrb_pickup_loc     = 'Main Hub'; // Standardized default for custom table schema
+$acrb_customer_name  = $acrb_booking['customer_name'] ?? 'Guest';
+$acrb_customer_phone = $acrb_booking['customer_phone'] ?? 'N/A';
+$acrb_pickup_loc     = 'Main Hub'; // Standardized default for custom table schema.
 $acrb_dropoff_loc    = 'Main Hub';
-$acrb_start_date     = $booking['pickup_date'] ?? '--';
-$acrb_end_date       = $booking['return_date'] ?? '--';
-$acrb_notes          = ''; // Handled via custom structure
-$acrb_total          = floatval( $booking['total_amount'] ?? 0 );
+$acrb_start_date     = $acrb_booking['pickup_date'] ?? '--';
+$acrb_end_date       = $acrb_booking['return_date'] ?? '--';
+$acrb_notes          = ''; // Handled via custom structure.
+$acrb_total          = floatval( $acrb_booking['total_amount'] ?? 0 );
 $acrb_currency       = get_option( 'acrb_currency', '£' );
 $acrb_site_name      = get_bloginfo( 'name' );
 
-// Calculations & Vehicle Info mapping from custom row
-$acrb_car_name   = $booking['car_name'] ?? 'Rental Vehicle';
+// Calculations & Vehicle Info mapping from custom row.
+$acrb_car_name   = $acrb_booking['car_name'] ?? 'Rental Vehicle';
 $acrb_total_days = 1; 
 if ( ! empty( $acrb_start_date ) && ! empty( $acrb_end_date ) && '--' !== $acrb_start_date && '--' !== $acrb_end_date ) {
-	$diff = strtotime( $acrb_end_date ) - strtotime( $acrb_start_date );
-	$acrb_total_days = max( 1, (int) round( $diff / 86400 ) );
+	$acrb_diff       = strtotime( $acrb_end_date ) - strtotime( $acrb_start_date );
+	$acrb_total_days = max( 1, (int) round( $acrb_diff / 86400 ) );
 }
 $acrb_daily_rate = $acrb_total_days > 0 ? ( $acrb_total / $acrb_total_days ) : $acrb_total;
 ?>
@@ -208,8 +212,8 @@ $acrb_daily_rate = $acrb_total_days > 0 ? ( $acrb_total / $acrb_total_days ) : $
 
 		<p style="text-align:center; margin-top:50px; font-size:11px; color:#94a3b8;">
 			<?php 
+			/* translators: 1: Site name, 2: Booking ID, 3: Generation date and time */
 			printf(
-				/* translators: 1: Site name, 2: Booking ID */
 				esc_html__( '%1$s — Official Rental Voucher #%2$d. Generated on %3$s', 'awesome-car-rental' ),
 				esc_html( $acrb_site_name ),
 				absint( $acrb_booking_id ),

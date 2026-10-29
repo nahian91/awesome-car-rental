@@ -5,7 +5,7 @@
  * Location: admin/settings.php
  *
  * @package Awesome_Car_Rental
- * @since   3.1.2
+ * @since   4.8.0
  */
 
 declare( strict_types=1 );
@@ -15,16 +15,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 function acrb_settings_tab(): void {
-    // 1. Access Control
+    // 1. Access Control.
     if ( ! current_user_can( 'manage_options' ) ) {
         wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'awesome-car-rental' ), 403 );
     }
 
-    $page_slug = 'awesome_car_rental';
-    $base_url  = admin_url( 'admin.php?page=' . $page_slug . '&tab=settings' );
+    $acrb_page_slug = 'awesome_car_rental';
+    $acrb_base_url  = admin_url( 'admin.php?page=' . $acrb_page_slug . '&tab=settings' );
 
-    // Define Sub-Tabs
-    $sub_tabs = array(
+    // Define Sub-Tabs.
+    $acrb_sub_tabs = array(
         'general'  => array(
             'label' => __( 'General', 'awesome-car-rental' ),
             'icon'  => 'dashicons-admin-generic',
@@ -39,40 +39,11 @@ function acrb_settings_tab(): void {
         ),
     );
 
-    // 2. Sub-tab Routing Sanitization
+    // 2. Sub-tab Routing Sanitization.
     // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-    $requested_sub = isset( $_GET['sub'] ) ? sanitize_key( wp_unslash( $_GET['sub'] ) ) : '';
-    $active_sub    = ( $requested_sub && array_key_exists( $requested_sub, $sub_tabs ) ) ? $requested_sub : 'general';
-
-    // 3. Form Submission Handling with Safe Redirect
-    if ( ! empty( $_POST ) ) {
-        if ( ! isset( $_POST['acrb_settings_nonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_POST['acrb_settings_nonce'] ) ), 'acrb_save_settings' ) ) {
-            wp_die( esc_html__( 'Security check failed. Please refresh the page and try again.', 'awesome-car-rental' ), 403 );
-        }
-
-        // Trigger settings saving hooks
-        do_action( 'acrb_save_settings_submitted' );
-
-        // Clear dashboard transient caches (e.g. if currency, tax, or business rules changed)
-        delete_transient( 'acrb_dashboard_revenue' );
-
-        $redirect_url = add_query_arg(
-            array(
-                'sub'     => $active_sub,
-                'updated' => '1',
-            ),
-            $base_url
-        );
-
-        if ( headers_sent() ) {
-            echo '<script>window.location.replace(' . wp_json_encode( esc_url_raw( $redirect_url ) ) . ');</script>';
-            echo '<noscript><meta http-equiv="refresh" content="0;url=' . esc_url( $redirect_url ) . '"></noscript>';
-            exit;
-        }
-
-        wp_safe_redirect( $redirect_url );
-        exit;
-    }
+    $acrb_requested_sub = isset( $_GET['sub'] ) ? sanitize_key( wp_unslash( $_GET['sub'] ) ) : '';
+    $acrb_active_sub    = ( $acrb_requested_sub && array_key_exists( $acrb_requested_sub, $acrb_sub_tabs ) ) ? $acrb_requested_sub : 'general';
+    
     ?>
 
     <style>
@@ -204,19 +175,6 @@ function acrb_settings_tab(): void {
             align-items: center;
             gap: 8px;
         }
-        .acrb-settings-alert-info {
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
-            color: #1e40af;
-            padding: 12px 18px;
-            border-radius: 10px;
-            font-size: 13.5px;
-            font-weight: 600;
-            margin-bottom: 22px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
 
         /* Main Content Elevation Card */
         .acrb-settings-content-card {
@@ -263,90 +221,81 @@ function acrb_settings_tab(): void {
         </header>
 
         <!-- Feedback Notices -->
-        <?php if ( isset( $_GET['updated'] ) && '1' === $_GET['updated'] ) : ?>
+        <?php
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( isset( $_GET['updated'] ) && '1' === $_GET['updated'] ) :
+        ?>
             <div class="acrb-settings-alert-success">
                 <span class="dashicons dashicons-yes-alt"></span>
                 <span><?php esc_html_e( 'Settings saved and updated successfully.', 'awesome-car-rental' ); ?></span>
-            </div>
-        <?php elseif ( isset( $_GET['updated'], $_GET['booking_id'] ) ) : 
-            $acrb_bid        = absint( wp_unslash( $_GET['booking_id'] ) );
-            $acrb_new_status = __( 'Confirmed', 'awesome-car-rental' );
-            $acrb_msg        = sprintf( esc_html__( 'Booking #%1$d updated to %2$s.', 'awesome-car-rental' ), absint( $acrb_bid ), esc_html( $acrb_new_status ) );
-        ?>
-            <div class="acrb-settings-alert-info">
-                <span class="dashicons dashicons-info"></span>
-                <span><?php echo wp_kses_post( $acrb_msg ); ?></span>
             </div>
         <?php endif; ?>
 
         <!-- Sub-Navigation Pill Strip -->
         <nav class="acrb-settings-nav-wrapper">
-            <?php foreach ( $sub_tabs as $key => $data ) : 
-                $url          = add_query_arg( array( 'page' => $page_slug, 'tab' => 'settings', 'sub' => $key ), admin_url( 'admin.php' ) );
-                $active_class = ( $active_sub === $key ) ? ' is-active' : '';
+            <?php
+            foreach ( $acrb_sub_tabs as $acrb_key => $acrb_data ) : 
+                $acrb_url          = add_query_arg( array( 'page' => $acrb_page_slug, 'tab' => 'settings', 'sub' => $acrb_key ), admin_url( 'admin.php' ) );
+                $acrb_active_class = ( $acrb_active_sub === $acrb_key ) ? ' is-active' : '';
             ?>
-                <a href="<?php echo esc_url( $url ); ?>" class="acrb-settings-nav-item<?php echo esc_attr( $active_class ); ?>">
-                    <span class="dashicons <?php echo esc_attr( $data['icon'] ); ?>"></span>
-                    <span><?php echo esc_html( $data['label'] ); ?></span>
+                <a href="<?php echo esc_url( $acrb_url ); ?>" class="acrb-settings-nav-item<?php echo esc_attr( $acrb_active_class ); ?>">
+                    <span class="dashicons <?php echo esc_attr( $acrb_data['icon'] ); ?>"></span>
+                    <span><?php echo esc_html( $acrb_data['label'] ); ?></span>
                 </a>
             <?php endforeach; ?>
         </nav>
 
         <!-- Content Card View -->
         <main class="acrb-settings-content-card">
-            <form method="post" action="">
-                <?php 
-                wp_nonce_field( 'acrb_save_settings', 'acrb_settings_nonce' );
+            <?php
+            switch ( $acrb_active_sub ) {
+                case 'payments':
+                    if ( function_exists( 'acrb_settings_payments_view' ) ) {
+                        acrb_settings_payments_view();
+                    } elseif ( file_exists( ACRB_PATH . 'admin/settings/settings-payments.php' ) ) {
+                        require_once ACRB_PATH . 'admin/settings/settings-payments.php';
+                    } else {
+                        ?>
+                        <div class="acrb-settings-empty-view">
+                            <h3 class="acrb-settings-empty-title"><?php esc_html_e( 'Payment Gateway Settings', 'awesome-car-rental' ); ?></h3>
+                            <p class="acrb-settings-empty-desc"><?php esc_html_e( 'The payment settings component view was not found.', 'awesome-car-rental' ); ?></p>
+                        </div>
+                        <?php
+                    }
+                    break;
 
-                switch ( $active_sub ) {
-                    case 'payments':
-                        if ( function_exists( 'acrb_settings_payments_view' ) ) {
-                            acrb_settings_payments_view();
-                        } elseif ( file_exists( ACRB_PATH . 'admin/settings/settings-payments.php' ) ) {
-                            require_once ACRB_PATH . 'admin/settings/settings-payments.php';
-                        } else {
-                            ?>
-                            <div class="acrb-settings-empty-view">
-                                <h3 class="acrb-settings-empty-title"><?php esc_html_e( 'Payment Gateway Settings', 'awesome-car-rental' ); ?></h3>
-                                <p class="acrb-settings-empty-desc"><?php esc_html_e( 'The payment settings component view was not found.', 'awesome-car-rental' ); ?></p>
-                            </div>
-                            <?php
-                        }
-                        break;
+                case 'emails':
+                    if ( function_exists( 'acrb_settings_emails_view' ) ) {
+                        acrb_settings_emails_view();
+                    } elseif ( file_exists( ACRB_PATH . 'admin/settings/settings-emails.php' ) ) {
+                        require_once ACRB_PATH . 'admin/settings/settings-emails.php';
+                    } else {
+                        ?>
+                        <div class="acrb-settings-empty-view">
+                            <h3 class="acrb-settings-empty-title"><?php esc_html_e( 'Notification & Email Settings', 'awesome-car-rental' ); ?></h3>
+                            <p class="acrb-settings-empty-desc"><?php esc_html_e( 'The email templates and SMTP settings component view was not found.', 'awesome-car-rental' ); ?></p>
+                        </div>
+                        <?php
+                    }
+                    break;
 
-                    case 'emails':
-                        if ( function_exists( 'acrb_settings_emails_view' ) ) {
-                            acrb_settings_emails_view();
-                        } elseif ( file_exists( ACRB_PATH . 'admin/settings/settings-emails.php' ) ) {
-                            require_once ACRB_PATH . 'admin/settings/settings-emails.php';
-                        } else {
-                            ?>
-                            <div class="acrb-settings-empty-view">
-                                <h3 class="acrb-settings-empty-title"><?php esc_html_e( 'Notification & Email Settings', 'awesome-car-rental' ); ?></h3>
-                                <p class="acrb-settings-empty-desc"><?php esc_html_e( 'The email templates and SMTP settings component view was not found.', 'awesome-car-rental' ); ?></p>
-                            </div>
-                            <?php
-                        }
-                        break;
-
-                    case 'general':
-                    default:
-                        if ( function_exists( 'acrb_settings_general_view' ) ) {
-                            acrb_settings_general_view();
-                        } elseif ( file_exists( ACRB_PATH . 'admin/settings/settings-general.php' ) ) {
-                            require_once ACRB_PATH . 'admin/settings/settings-general.php';
-                        } else {
-                            ?>
-                            <div class="acrb-settings-empty-view">
-                                <h3 class="acrb-settings-empty-title"><?php esc_html_e( 'General Settings', 'awesome-car-rental' ); ?></h3>
-                                <p class="acrb-settings-empty-desc"><?php esc_html_e( 'Define acrb_settings_general_view() or place settings-general.php to configure company currency, business hours, and operational defaults.', 'awesome-car-rental' ); ?></p>
-                            </div>
-                            <?php
-                        }
-                        break;
-                }
-                ?>
-            </form>
+                case 'general':
+                default:
+                    if ( function_exists( 'acrb_settings_general_view' ) ) {
+                        acrb_settings_general_view();
+                    } elseif ( file_exists( ACRB_PATH . 'admin/settings/acrb-settings-general.php' ) ) {
+                        require_once ACRB_PATH . 'admin/settings/acrb-settings-general.php';
+                    } else {
+                        ?>
+                        <div class="acrb-settings-empty-view">
+                            <h3 class="acrb-settings-empty-title"><?php esc_html_e( 'General Settings', 'awesome-car-rental' ); ?></h3>
+                            <p class="acrb-settings-empty-desc"><?php esc_html_e( 'Define acrb_settings_general_view() or place acrb-settings-general.php to configure company currency, business hours, and operational defaults.', 'awesome-car-rental' ); ?></p>
+                        </div>
+                        <?php
+                    }
+                    break;
+            }
+            ?>
         </main>
     </div>
     <?php

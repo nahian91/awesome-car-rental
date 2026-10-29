@@ -4,7 +4,7 @@
  * Location: admin/settings/acrb-settings-general.php
  *
  * @package Awesome_Car_Rental
- * @since   3.1.4
+ * @since   4.8.0
  */
 
 declare( strict_types=1 );
@@ -18,36 +18,39 @@ function acrb_settings_general_view(): void {
         return;
     }
 
-    $page_slug = 'awesome_car_rental';
-    $base_url  = admin_url( 'admin.php?page=' . $page_slug . '&tab=settings&sub=general' );
+    $acrb_page_slug = 'awesome_car_rental';
+    $acrb_base_url  = admin_url( 'admin.php?page=' . $acrb_page_slug . '&tab=settings&sub=general' );
 
-    $currencies = array(
-        'USD' => array( 'name' => 'US Dollar',         'symbol' => '$' ),
-        'EUR' => array( 'name' => 'Euro',              'symbol' => '€' ),
-        'GBP' => array( 'name' => 'British Pound',     'symbol' => '£' ),
-        'BDT' => array( 'name' => 'Bangladeshi Taka',  'symbol' => '৳' ),
-        'INR' => array( 'name' => 'Indian Rupee',      'symbol' => '₹' ),
-        'JPY' => array( 'name' => 'Japanese Yen',      'symbol' => '¥' ),
-        'CAD' => array( 'name' => 'Canadian Dollar',   'symbol' => 'CA$' ),
-        'AED' => array( 'name' => 'UAE Dirham',        'symbol' => 'د.إ' ),
+    $acrb_currencies = array(
+        'USD' => array( 'name' => 'US Dollar',        'symbol' => '$' ),
+        'EUR' => array( 'name' => 'Euro',             'symbol' => '€' ),
+        'GBP' => array( 'name' => 'British Pound',    'symbol' => '£' ),
+        'BDT' => array( 'name' => 'Bangladeshi Taka', 'symbol' => '৳' ),
+        'INR' => array( 'name' => 'Indian Rupee',     'symbol' => '₹' ),
+        'JPY' => array( 'name' => 'Japanese Yen',     'symbol' => '¥' ),
+        'CAD' => array( 'name' => 'Canadian Dollar',  'symbol' => 'CA$' ),
+        'AED' => array( 'name' => 'UAE Dirham',       'symbol' => 'د.إ' ),
     );
 
-    // 1. Process Form Submission with Safe Redirect
+    // 1. Process Form Submission with Safe Redirect.
     if ( isset( $_POST['acrb_save_general'] ) ) {
         $acrb_nonce = isset( $_POST['acrb_general_nonce'] ) ? sanitize_key( wp_unslash( $_POST['acrb_general_nonce'] ) ) : '';
 
         if ( wp_verify_nonce( $acrb_nonce, 'acrb_save_general_settings' ) ) {
-            $selected_code = isset( $_POST['acrb_currency_code'] ) ? sanitize_text_field( wp_unslash( $_POST['acrb_currency_code'] ) ) : 'USD';
-            update_option( 'acrb_currency_code', $selected_code );
-            update_option( 'acrb_currency', $currencies[ $selected_code ]['symbol'] ?? '$' );
+            // Save Currency Code & Symbol
+            $acrb_selected_code = isset( $_POST['acrb_currency_code'] ) ? sanitize_text_field( wp_unslash( $_POST['acrb_currency_code'] ) ) : 'USD';
+            update_option( 'acrb_currency_code', $acrb_selected_code );
+            update_option( 'acrb_currency', $acrb_currencies[ $acrb_selected_code ]['symbol'] ?? '$' );
 
-            $fields = array( 'acrb_rental_unit', 'acrb_currency_pos', 'acrb_pickup_start', 'acrb_pickup_end' );
-            foreach ( $fields as $field ) {
-                if ( isset( $_POST[ $field ] ) ) {
-                    update_option( $field, sanitize_text_field( wp_unslash( $_POST[ $field ] ) ) );
+            // Save text/select fields safely
+            $acrb_string_fields = array( 'acrb_rental_unit', 'acrb_currency_pos', 'acrb_pickup_start', 'acrb_pickup_end' );
+            foreach ( $acrb_string_fields as $acrb_field ) {
+                if ( isset( $_POST[ $acrb_field ] ) ) {
+                    update_option( $acrb_field, sanitize_text_field( wp_unslash( $_POST[ $acrb_field ] ) ) );
                 }
             }
 
+            // Save numeric and checkbox rules safely
             update_option( 'acrb_min_rent_days', max( 1, absint( $_POST['acrb_min_rent_days'] ?? 1 ) ) );
             update_option( 'acrb_buffer_time', absint( $_POST['acrb_buffer_time'] ?? 2 ) );
             update_option( 'acrb_min_age', max( 18, absint( $_POST['acrb_min_age'] ?? 21 ) ) );
@@ -55,30 +58,30 @@ function acrb_settings_general_view(): void {
 
             delete_transient( 'acrb_dashboard_revenue' );
 
-            $redirect_url = add_query_arg( 'updated', '1', $base_url );
+            $acrb_redirect_url = add_query_arg( 'updated', '1', $acrb_base_url );
 
             if ( headers_sent() ) {
-                echo '<script>window.location.replace(' . wp_json_encode( esc_url_raw( $redirect_url ) ) . ');</script>';
-                echo '<noscript><meta http-equiv="refresh" content="0;url=' . esc_url( $redirect_url ) . '"></noscript>';
+                echo '<script>window.location.replace(' . wp_json_encode( esc_url_raw( $acrb_redirect_url ) ) . ');</script>';
+                echo '<noscript><meta http-equiv="refresh" content="0;url=' . esc_url( $acrb_redirect_url ) . '"></noscript>';
                 exit;
             }
 
-            wp_safe_redirect( $redirect_url );
+            wp_safe_redirect( $acrb_redirect_url );
             exit;
         }
     }
 
-    // 2. Fetch Stored Values
-    $unit      = (string) get_option( 'acrb_rental_unit', 'day' );
-    $curr_code = (string) get_option( 'acrb_currency_code', 'USD' );
-    $curr_pos  = (string) get_option( 'acrb_currency_pos', 'left' );
-    $min_days  = absint( get_option( 'acrb_min_rent_days', 1 ) );
-    $buffer    = absint( get_option( 'acrb_buffer_time', 2 ) );
-    $min_age   = absint( get_option( 'acrb_min_age', 21 ) );
-    $p_start   = (string) get_option( 'acrb_pickup_start', '08:00' );
-    $p_end     = (string) get_option( 'acrb_pickup_end', '20:00' );
-    $weekend   = (string) get_option( 'acrb_weekend_rental', 'yes' );
-    $curr_sym  = $currencies[ $curr_code ]['symbol'] ?? '$';
+    // 2. Fetch Stored Values.
+    $acrb_unit      = (string) get_option( 'acrb_rental_unit', 'day' );
+    $acrb_curr_code = (string) get_option( 'acrb_currency_code', 'USD' );
+    $acrb_curr_pos  = (string) get_option( 'acrb_currency_pos', 'left' );
+    $acrb_min_days  = absint( get_option( 'acrb_min_rent_days', 1 ) );
+    $acrb_buffer    = absint( get_option( 'acrb_buffer_time', 2 ) );
+    $acrb_min_age   = absint( get_option( 'acrb_min_age', 21 ) );
+    $acrb_p_start   = (string) get_option( 'acrb_pickup_start', '08:00' );
+    $acrb_p_end     = (string) get_option( 'acrb_pickup_end', '20:00' );
+    $acrb_weekend   = (string) get_option( 'acrb_weekend_rental', 'yes' );
+    $acrb_curr_sym  = $acrb_currencies[ $acrb_curr_code ]['symbol'] ?? '$';
     ?>
 
     <style>
@@ -356,9 +359,9 @@ function acrb_settings_general_view(): void {
                             <label class="acrb-general-label" for="acrb_currency_code"><?php esc_html_e( 'Base Currency', 'awesome-car-rental' ); ?></label>
                             <div class="acrb-general-select-wrap">
                                 <select id="acrb_currency_code" name="acrb_currency_code" class="acrb-general-select">
-                                    <?php foreach ( $currencies as $code => $data ) : ?>
-                                        <option value="<?php echo esc_attr( $code ); ?>" data-symbol="<?php echo esc_attr( $data['symbol'] ); ?>" <?php selected( $curr_code, $code ); ?>>
-                                            <?php echo esc_html( $data['symbol'] . ' - ' . $data['name'] ); ?>
+                                    <?php foreach ( $acrb_currencies as $acrb_code => $acrb_data ) : ?>
+                                        <option value="<?php echo esc_attr( $acrb_code ); ?>" data-symbol="<?php echo esc_attr( $acrb_data['symbol'] ); ?>" <?php selected( $acrb_curr_code, $acrb_code ); ?>>
+                                            <?php echo esc_html( $acrb_data['symbol'] . ' - ' . $acrb_data['name'] ); ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -371,16 +374,16 @@ function acrb_settings_general_view(): void {
                             <label class="acrb-general-label" for="acrb_currency_pos"><?php esc_html_e( 'Symbol Position', 'awesome-car-rental' ); ?></label>
                             <div class="acrb-general-select-wrap">
                                 <select id="acrb_currency_pos" name="acrb_currency_pos" class="acrb-general-select">
-                                    <option value="left" <?php selected( $curr_pos, 'left' ); ?>>
+                                    <option value="left" <?php selected( $acrb_curr_pos, 'left' ); ?>>
                                         <?php 
                                         /* translators: %s: Currency symbol, e.g., $ */
-                                        printf( esc_html__( 'Before (%s100)', 'awesome-car-rental' ), esc_html( $curr_sym ) ); 
+                                        printf( esc_html__( 'Before (%s100)', 'awesome-car-rental' ), esc_html( $acrb_curr_sym ) ); 
                                         ?>
                                     </option>
-                                    <option value="right" <?php selected( $curr_pos, 'right' ); ?>>
+                                    <option value="right" <?php selected( $acrb_curr_pos, 'right' ); ?>>
                                         <?php 
                                         /* translators: %s: Currency symbol, e.g., $ */
-                                        printf( esc_html__( 'After (100%s)', 'awesome-car-rental' ), esc_html( $curr_sym ) ); 
+                                        printf( esc_html__( 'After (100%s)', 'awesome-car-rental' ), esc_html( $acrb_curr_sym ) ); 
                                         ?>
                                     </option>
                                 </select>
@@ -394,32 +397,32 @@ function acrb_settings_general_view(): void {
                         <label class="acrb-general-label" for="acrb_rental_unit"><?php esc_html_e( 'Base Pricing Interval', 'awesome-car-rental' ); ?></label>
                         <div class="acrb-general-select-wrap">
                             <select id="acrb_rental_unit" name="acrb_rental_unit" class="acrb-general-select">
-                                <option value="day" <?php selected( $unit, 'day' ); ?>><?php esc_html_e( 'Daily (Fixed 24-hour cycles)', 'awesome-car-rental' ); ?></option>
-                                <option value="hour" <?php selected( $unit, 'hour' ); ?>><?php esc_html_e( 'Hourly (Flexible duration)', 'awesome-car-rental' ); ?></option>
+                                <option value="day" <?php selected( $acrb_unit, 'day' ); ?>><?php esc_html_e( 'Daily (Fixed 24-hour cycles)', 'awesome-car-rental' ); ?></option>
+                                <option value="hour" <?php selected( $acrb_unit, 'hour' ); ?>><?php esc_html_e( 'Hourly (Flexible duration)', 'awesome-car-rental' ); ?></option>
                             </select>
                             <span class="dashicons dashicons-arrow-down-alt2 acrb-general-select-arrow"></span>
                         </div>
                         <p class="acrb-general-hint"><?php esc_html_e( 'Governs rate calculations across all fleet vehicles and booking calculation engines.', 'awesome-car-rental' ); ?></p>
                     </div>
 
-                    <div class="acrb-general-row">
+                    <div class="acrb-general-row" style="margin-top: 18px;">
                         <!-- Minimum Rental Cycle -->
                         <div class="acrb-general-field">
                             <label class="acrb-general-label" for="acrb_min_rent_days">
                                 <span id="acrb_unit_label">
                                     <?php 
                                     /* translators: %s: Time unit (e.g. Days, Hours). */
-                                    printf( esc_html__( 'Min. %ss', 'awesome-car-rental' ), esc_html( ucfirst( $unit ) ) ); 
+                                    printf( esc_html__( 'Min. %ss', 'awesome-car-rental' ), esc_html( ucfirst( $acrb_unit ) ) ); 
                                     ?>
                                 </span>
                             </label>
-                            <input type="number" id="acrb_min_rent_days" name="acrb_min_rent_days" value="<?php echo esc_attr( (string) $min_days ); ?>" class="acrb-general-input" min="1">
+                            <input type="number" id="acrb_min_rent_days" name="acrb_min_rent_days" value="<?php echo esc_attr( (string) $acrb_min_days ); ?>" class="acrb-general-input" min="1">
                         </div>
 
                         <!-- Minimum Driver Age -->
                         <div class="acrb-general-field">
                             <label class="acrb-general-label" for="acrb_min_age"><?php esc_html_e( 'Min. Driver Age', 'awesome-car-rental' ); ?></label>
-                            <input type="number" id="acrb_min_age" name="acrb_min_age" value="<?php echo esc_attr( (string) $min_age ); ?>" class="acrb-general-input" min="18">
+                            <input type="number" id="acrb_min_age" name="acrb_min_age" value="<?php echo esc_attr( (string) $acrb_min_age ); ?>" class="acrb-general-input" min="18">
                         </div>
                     </div>
                 </div>
@@ -440,9 +443,9 @@ function acrb_settings_general_view(): void {
                     <div class="acrb-general-field">
                         <label class="acrb-general-label"><?php esc_html_e( 'Daily Counter Operation Hours', 'awesome-car-rental' ); ?></label>
                         <div class="acrb-time-range-group">
-                            <input type="time" name="acrb_pickup_start" value="<?php echo esc_attr( $p_start ); ?>" class="acrb-general-input" required>
+                            <input type="time" name="acrb_pickup_start" value="<?php echo esc_attr( $acrb_p_start ); ?>" class="acrb-general-input" required>
                             <span class="acrb-time-range-sep"><?php esc_html_e( 'to', 'awesome-car-rental' ); ?></span>
-                            <input type="time" name="acrb_pickup_end" value="<?php echo esc_attr( $p_end ); ?>" class="acrb-general-input" required>
+                            <input type="time" name="acrb_pickup_end" value="<?php echo esc_attr( $acrb_p_end ); ?>" class="acrb-general-input" required>
                         </div>
                         <p class="acrb-general-hint"><?php esc_html_e( 'Customer booking datepickers will restrict pickup and dropoff slots to this operating window.', 'awesome-car-rental' ); ?></p>
                     </div>
@@ -450,13 +453,13 @@ function acrb_settings_general_view(): void {
                     <!-- Turnaround Buffer -->
                     <div class="acrb-general-field">
                         <label class="acrb-general-label" for="acrb_buffer_time"><?php esc_html_e( 'Turnaround Preparation Buffer (Hours)', 'awesome-car-rental' ); ?></label>
-                        <input type="number" id="acrb_buffer_time" name="acrb_buffer_time" value="<?php echo esc_attr( (string) $buffer ); ?>" class="acrb-general-input" min="0">
+                        <input type="number" id="acrb_buffer_time" name="acrb_buffer_time" value="<?php echo esc_attr( (string) $acrb_buffer ); ?>" class="acrb-general-input" min="0">
                         <p class="acrb-general-hint"><?php esc_html_e( 'Minimum buffer between consecutive bookings reserved for vehicle inspection, cleaning, and maintenance.', 'awesome-car-rental' ); ?></p>
                     </div>
 
                     <!-- Weekend Operations Toggle -->
                     <label class="acrb-general-checkbox-card">
-                        <input type="checkbox" name="acrb_weekend_rental" value="yes" <?php checked( $weekend, 'yes' ); ?>> 
+                        <input type="checkbox" name="acrb_weekend_rental" value="yes" <?php checked( $acrb_weekend, 'yes' ); ?>> 
                         <div class="acrb-checkbox-meta">
                             <span class="acrb-checkbox-title"><?php esc_html_e( 'Enable Weekend Operations', 'awesome-car-rental' ); ?></span>
                             <span class="acrb-checkbox-desc"><?php esc_html_e( 'Allow customer pickups and return operations on Saturday and Sunday.', 'awesome-car-rental' ); ?></span>
@@ -491,13 +494,16 @@ function acrb_settings_general_view(): void {
             const optBefore = posSelect.querySelector('option[value="left"]');
             const optAfter  = posSelect.querySelector('option[value="right"]');
 
+            <?php /* translators: %s: Currency symbol preview, e.g., $ */ ?>
             if (optBefore) optBefore.textContent = <?php echo wp_json_encode( __( 'Before (%s100)', 'awesome-car-rental' ) ); ?>.replace('%s', sym);
+            <?php /* translators: %s: Currency symbol preview, e.g., $ */ ?>
             if (optAfter)  optAfter.textContent  = <?php echo wp_json_encode( __( 'After (100%s)', 'awesome-car-rental' ) ); ?>.replace('%s', sym);
         }
 
         function updateUnitLabel() {
             if (!unitSelect || !unitLabel) return;
             const val = unitSelect.value === 'hour' ? 'Hour' : 'Day';
+            <?php /* translators: %s: Time unit (e.g. Days, Hours). */ ?>
             unitLabel.textContent = <?php echo wp_json_encode( __( 'Min. %ss', 'awesome-car-rental' ) ); ?>.replace('%s', val);
         }
 

@@ -15,27 +15,29 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Enqueue Admin-Only Styles & Scripts (Including DataTables)
+ *
+ * @param string $hook The current admin page hook.
  */
-function acrb_plugin_admin_scripts( $hook ) {
-	// Check both $hook and the query parameter for reliable loading
-	if ( ! isset( $_GET['page'] ) || 'awesome_car_rental' !== $_GET['page'] ) {
+function acrb_plugin_admin_scripts( $hook ): void {
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	if ( ! isset( $_GET['page'] ) || 'awesome_car_rental' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) {
 		return;
 	}
 
 	wp_enqueue_media();
 
-	// 1. DataTables Core CSS
+	// 1. DataTables Core CSS (Loaded locally from assets/css)
 	wp_enqueue_style(
 		'acrb-datatables-css',
-		'https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css',
+		ACRB_URL . 'assets/css/jquery.dataTables.min.css',
 		array(),
 		'1.13.7'
 	);
 
-	// 2. DataTables Core JS
+	// 2. DataTables Core JS (Loaded locally from assets/js)
 	wp_enqueue_script(
 		'acrb-datatables-js',
-		'https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js',
+		ACRB_URL . 'assets/js/jquery.dataTables.min.js',
 		array( 'jquery' ),
 		'1.13.7',
 		true
@@ -58,9 +60,8 @@ function acrb_plugin_admin_scripts( $hook ) {
 	);
 
 	// 4. Auto-initialize DataTables: Disable all alert warnings & handle empty states smoothly
-	$inline_dt_init = "
+	$acrb_inline_dt_init = "
 		jQuery(document).ready(function($) {
-			// SILENCE ALL DATATABLES POPUP WARNINGS / ALERTS
 			if ( $.fn.dataTable ) {
 				$.fn.dataTable.ext.errMode = 'none';
 			}
@@ -68,7 +69,6 @@ function acrb_plugin_admin_scripts( $hook ) {
 			$('.acrb-datatable, .awesome-car-rental table.wp-list-table').each(function() {
 				var \$tbl = $(this);
 				if ( ! $.fn.DataTable.isDataTable(this) ) {
-					// Only initialize if there are rows or valid headers
 					if ( \$tbl.find('tbody tr').length > 0 ) {
 						\$tbl.DataTable({
 							responsive: false,
@@ -88,7 +88,7 @@ function acrb_plugin_admin_scripts( $hook ) {
 			});
 		});
 	";
-	wp_add_inline_script( 'acrb-datatables-js', $inline_dt_init );
+	wp_add_inline_script( 'acrb-datatables-js', $acrb_inline_dt_init );
 }
 add_action( 'admin_enqueue_scripts', 'acrb_plugin_admin_scripts' );
 
