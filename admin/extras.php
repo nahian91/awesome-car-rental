@@ -2,7 +2,12 @@
 /**
  * ACRB Extras Tab - Full configuration for Pickup/Drop-off Locations, Surcharges, Add-on Extras, Specs, and Amenities
  * Features: Expanded Icon Library, Real-time Icon Search & Elite SaaS Layout
+ *
+ * @package Awesome_Car_Rental
+ * @since   1.8.3
  */
+
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -10,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 function acrb_extras_tab() {
     if ( ! current_user_can( 'manage_options' ) ) {
-        return;
+        wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'awesome-car-rental' ) );
     }
 
     // 1. SAVE LOGIC
@@ -33,7 +38,7 @@ function acrb_extras_tab() {
         // Clear dashboard transient caches
         delete_transient( 'acrb_dashboard_revenue' );
 
-        echo '<div class="notice notice-success is-dismissible" style="margin: 0 0 20px 0;"><p><strong>' . esc_html__( 'Success:', 'awesome-car-rental' ) . '</strong> ' . esc_html__( 'All extra configurations saved.', 'awesome-car-rental' ) . '</p></div>';
+        echo '<div class="notice notice-success is-dismissible" style="margin: 0 0 20px 0;"><p><strong>' . esc_html__( 'Success:', 'awesome-car-rental' ) . '</strong> ' . esc_html__( 'All extra configurations saved successfully.', 'awesome-car-rental' ) . '</p></div>';
     }
 
     // 2. DATA FETCHING
@@ -60,75 +65,6 @@ function acrb_extras_tab() {
     );
     ?>
 
-    <style>
-        /* Modern SaaS Layout Theme */
-        .acrb-dash-wrap { max-width: 1200px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1e293b; margin: 0; box-sizing: border-box; }
-        .acrb-dash-wrap *, .acrb-dash-wrap *::before, .acrb-dash-wrap *::after { box-sizing: border-box; }
-        
-        /* Ultra-Premium Top Header Bar */
-        .acrb-header-flex { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); 
-            border: 1px solid #e2e8f0; 
-            border-top: 3px solid #3b82f6;
-            border-radius: 14px; 
-            padding: 24px 32px; 
-            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03); 
-            margin-bottom: 28px; 
-            position: relative;
-        }
-        .acrb-title-wrapper { display: flex; align-items: center; gap: 18px; width: 100%; }
-        .acrb-title-icon { width: 48px; height: 48px; min-width: 48px; background: #eff6ff; color: #3b82f6; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: inset 0 1px 2px rgba(59, 130, 246, 0.1); }
-        .acrb-title-icon .dashicons { font-size: 24px; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; }
-        
-        .acrb-title-content { display: flex; flex-direction: column; gap: 4px; }
-        .acrb-main-title { font-size: 22px; font-weight: 700; margin: 0; color: #0f172a; letter-spacing: -0.5px; line-height: 1.2; }
-        .acrb-sub-title { font-size: 13px; margin: 0; color: #64748b; font-weight: 400; line-height: 1.4; }
-
-        .acrb-admin-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.01); }
-        .acrb-admin-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; }
-        .acrb-admin-card-title { margin: 0; font-size: 16px; font-weight: 600; color: #0f172a; flex: 1; }
-        
-        .acrb-admin-row-list { display: flex; flex-direction: column; gap: 12px; }
-        .acrb-admin-item-row { display: flex; gap: 12px; align-items: center; background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; position: relative; transition: all 0.2s ease; }
-        .acrb-admin-item-row:hover { border-color: #cbd5e1; background: #fff; }
-        
-        /* Icon Selector UI */
-        .acrb-admin-icon-trigger { cursor: pointer; background: #fff; border: 1px solid #cbd5e1; padding: 5px; border-radius: 6px; min-width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; transition: 0.2s; color: #334155; }
-        .acrb-admin-icon-trigger:hover { border-color: #3b82f6; color: #3b82f6; }
-        .acrb-admin-icon-dropdown { display: none; position: absolute; top: 52px; left: 12px; z-index: 1000; background: #fff; border: 1px solid #cbd5e1; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 14px; width: 280px; border-radius: 10px; }
-        
-        /* Search Box inside Dropdown */
-        .acrb-icon-search-input { width: 100%; margin-bottom: 10px; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; box-sizing: border-box; }
-        
-        .acrb-admin-icon-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; max-height: 180px; overflow-y: auto; }
-        .acrb-admin-icon-opt { padding: 8px; cursor: pointer; text-align: center; border-radius: 6px; border: 1px solid transparent; color: #334155; }
-        .acrb-admin-icon-opt:hover { background: #eff6ff; border-color: #3b82f6; color: #3b82f6; }
-        .acrb-admin-icon-opt.hidden { display: none; }
-        
-        .acrb-admin-input, .acrb-admin-select { border: 1px solid #cbd5e1; border-radius: 6px; padding: 0 12px; height: 38px; font-size: 13px; color: #1e293b; background: #fff; }
-        .acrb-admin-input:focus, .acrb-admin-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; outline: none; }
-        .acrb-admin-flex-grow { flex: 1; }
-        .acrb-admin-w-180 { width: 180px; }
-        .acrb-admin-w-140 { width: 140px; }
-        
-        .acrb-admin-remove-btn { color: #b91c1c; cursor: pointer; opacity: 0.6; transition: 0.2s; padding: 6px; display: inline-flex; align-items: center; justify-content: center; }
-        .acrb-admin-remove-btn:hover { opacity: 1; background: #fee2e2; border-radius: 6px; }
-        
-        .acrb-admin-add-btn { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; color: #3b82f6; font-weight: 600; font-size: 13px; cursor: pointer; transition: 0.2s; background: #eff6ff; padding: 8px 14px; border-radius: 8px; border: 1px solid #bfdbfe; width: fit-content; }
-        .acrb-admin-add-btn:hover { background: #dbeafe; color: #2563eb; }
-
-        .acrb-admin-footer { margin-top: 24px; padding: 20px 28px; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; display: flex; justify-content: flex-end; box-shadow: 0 2px 4px rgba(0,0,0,0.01); }
-        .acrb-admin-btn-save { background: #3b82f6; color: #fff; border: none; padding: 10px 28px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35); transition: background 0.2s; height: 40px; }
-        .acrb-admin-btn-save:hover { background: #2563eb; }
-
-        @media(max-width: 900px) {
-            .acrb-header-flex { flex-direction: column; align-items: flex-start; gap: 20px; }
-        }
-    </style>
-
     <div class="acrb-dash-wrap">
         <div class="acrb-header-flex">
             <div class="acrb-title-wrapper">
@@ -136,8 +72,8 @@ function acrb_extras_tab() {
                     <span class="dashicons dashicons-plus-alt"></span>
                 </div>
                 <div class="acrb-title-content">
-                    <h1 class="acrb-main-title"><?php esc_html_e( 'Fleet Extras & Amenities', 'awesome-car-rental' ); ?></h1>
-                    <p class="acrb-sub-title"><?php esc_html_e( 'Configure pickup/drop-off locations, location surcharges, rentable add-on extras, specs, and amenities.', 'awesome-car-rental' ); ?></p>
+                    <h1><?php esc_html_e( 'Fleet Extras & Amenities', 'awesome-car-rental' ); ?></h1>
+                    <p><?php esc_html_e( 'Configure pickup/drop-off locations, location surcharges, rentable add-on extras, specs, and amenities.', 'awesome-car-rental' ); ?></p>
                 </div>
             </div>
         </div>
@@ -148,15 +84,15 @@ function acrb_extras_tab() {
             <!-- Pickup Locations Card -->
             <div class="acrb-admin-card">
                 <div class="acrb-admin-card-header">
-                    <span class="dashicons dashicons-location" style="color:#3b82f6;"></span>
+                    <span class="dashicons dashicons-location"></span>
                     <h3 class="acrb-admin-card-title"><?php esc_html_e( 'Pickup Locations', 'awesome-car-rental' ); ?></h3>
                 </div>
                 <div id="acrb-pickup-locations-list" class="acrb-admin-row-list">
                     <?php foreach ( $pickup_locs as $idx => $l ) : ?>
                         <div class="acrb-admin-item-row">
                             <div class="acrb-admin-icon-trigger"><span class="dashicons <?php echo esc_attr( $l['icon'] ?? 'dashicons-location' ); ?>"></span></div>
-                            <input type="hidden" name="pickup_locations[<?php echo esc_attr( $idx ); ?>][icon]" value="<?php echo esc_attr( $l['icon'] ?? 'dashicons-location' ); ?>" class="acrb-icon-val">
-                            <input type="text" name="pickup_locations[<?php echo esc_attr( $idx ); ?>][name]" value="<?php echo esc_attr( $l['name'] ?? '' ); ?>" class="acrb-admin-input acrb-admin-flex-grow" placeholder="<?php esc_attr_e( 'Pickup Location Name', 'awesome-car-rental' ); ?>">
+                            <input type="hidden" name="pickup_locations[<?php echo esc_attr( (string) $idx ); ?>][icon]" value="<?php echo esc_attr( $l['icon'] ?? 'dashicons-location' ); ?>" class="acrb-icon-val">
+                            <input type="text" name="pickup_locations[<?php echo esc_attr( (string) $idx ); ?>][name]" value="<?php echo esc_attr( $l['name'] ?? '' ); ?>" class="acrb-admin-input acrb-admin-flex-grow" placeholder="<?php esc_attr_e( 'Pickup Location Name', 'awesome-car-rental' ); ?>">
                             <span class="dashicons dashicons-no-alt acrb-admin-remove-btn" title="<?php esc_attr_e( 'Remove', 'awesome-car-rental' ); ?>"></span>
                             
                             <div class="acrb-admin-icon-dropdown">
@@ -179,15 +115,15 @@ function acrb_extras_tab() {
             <!-- Drop-off Locations Card -->
             <div class="acrb-admin-card">
                 <div class="acrb-admin-card-header">
-                    <span class="dashicons dashicons-location-alt" style="color:#3b82f6;"></span>
+                    <span class="dashicons dashicons-location-alt"></span>
                     <h3 class="acrb-admin-card-title"><?php esc_html_e( 'Drop-off Locations', 'awesome-car-rental' ); ?></h3>
                 </div>
                 <div id="acrb-dropoff-locations-list" class="acrb-admin-row-list">
                     <?php foreach ( $dropoff_locs as $idx => $l ) : ?>
                         <div class="acrb-admin-item-row">
                             <div class="acrb-admin-icon-trigger"><span class="dashicons <?php echo esc_attr( $l['icon'] ?? 'dashicons-location-alt' ); ?>"></span></div>
-                            <input type="hidden" name="dropoff_locations[<?php echo esc_attr( $idx ); ?>][icon]" value="<?php echo esc_attr( $l['icon'] ?? 'dashicons-location-alt' ); ?>" class="acrb-icon-val">
-                            <input type="text" name="dropoff_locations[<?php echo esc_attr( $idx ); ?>][name]" value="<?php echo esc_attr( $l['name'] ?? '' ); ?>" class="acrb-admin-input acrb-admin-flex-grow" placeholder="<?php esc_attr_e( 'Drop-off Location Name', 'awesome-car-rental' ); ?>">
+                            <input type="hidden" name="dropoff_locations[<?php echo esc_attr( (string) $idx ); ?>][icon]" value="<?php echo esc_attr( $l['icon'] ?? 'dashicons-location-alt' ); ?>" class="acrb-icon-val">
+                            <input type="text" name="dropoff_locations[<?php echo esc_attr( (string) $idx ); ?>][name]" value="<?php echo esc_attr( $l['name'] ?? '' ); ?>" class="acrb-admin-input acrb-admin-flex-grow" placeholder="<?php esc_attr_e( 'Drop-off Location Name', 'awesome-car-rental' ); ?>">
                             <span class="dashicons dashicons-no-alt acrb-admin-remove-btn" title="<?php esc_attr_e( 'Remove', 'awesome-car-rental' ); ?>"></span>
                             
                             <div class="acrb-admin-icon-dropdown">
@@ -210,14 +146,14 @@ function acrb_extras_tab() {
             <!-- Location Surcharges Card -->
             <div class="acrb-admin-card">
                 <div class="acrb-admin-card-header">
-                    <span class="dashicons dashicons-money-alt" style="color:#3b82f6;"></span>
+                    <span class="dashicons dashicons-money-alt"></span>
                     <h3 class="acrb-admin-card-title"><?php esc_html_e( 'Location Surcharges & Fees', 'awesome-car-rental' ); ?></h3>
                 </div>
                 <div id="acrb-surcharges-list" class="acrb-admin-row-list">
                     <?php foreach ( $surcharges as $idx => $s ) : ?>
                         <div class="acrb-admin-item-row">
-                            <input type="text" name="surcharges[<?php echo esc_attr( $idx ); ?>][location]" value="<?php echo esc_attr( $s['location'] ?? '' ); ?>" class="acrb-admin-input acrb-admin-flex-grow" placeholder="<?php esc_attr_e( 'Hub / Location Name (e.g. Airport Terminal)', 'awesome-car-rental' ); ?>">
-                            <input type="number" step="0.01" name="surcharges[<?php echo esc_attr( $idx ); ?>][fee]" value="<?php echo esc_attr( $s['fee'] ?? '' ); ?>" class="acrb-admin-input acrb-admin-w-140" placeholder="Fee (<?php echo esc_html( $currency ); ?>)">
+                            <input type="text" name="surcharges[<?php echo esc_attr( (string) $idx ); ?>][location]" value="<?php echo esc_attr( $s['location'] ?? '' ); ?>" class="acrb-admin-input acrb-admin-flex-grow" placeholder="<?php esc_attr_e( 'Hub / Location Name (e.g. Airport Terminal)', 'awesome-car-rental' ); ?>">
+                            <input type="number" step="0.01" name="surcharges[<?php echo esc_attr( (string) $idx ); ?>][fee]" value="<?php echo esc_attr( $s['fee'] ?? '' ); ?>" class="acrb-admin-input acrb-admin-w-140" placeholder="Fee (<?php echo esc_html( $currency ); ?>)">
                             <span class="dashicons dashicons-no-alt acrb-admin-remove-btn" title="<?php esc_attr_e( 'Remove', 'awesome-car-rental' ); ?>"></span>
                         </div>
                     <?php endforeach; ?>
@@ -231,17 +167,17 @@ function acrb_extras_tab() {
             <!-- Global Add-on Extras Card -->
             <div class="acrb-admin-card">
                 <div class="acrb-admin-card-header">
-                    <span class="dashicons dashicons-cart" style="color:#3b82f6;"></span>
+                    <span class="dashicons dashicons-cart"></span>
                     <h3 class="acrb-admin-card-title"><?php esc_html_e( 'Global Add-on Extras (Rentables)', 'awesome-car-rental' ); ?></h3>
                 </div>
                 <div id="acrb-addon-extras-list" class="acrb-admin-row-list">
                     <?php foreach ( $addon_extras as $idx => $addon ) : ?>
                         <div class="acrb-admin-item-row">
                             <div class="acrb-admin-icon-trigger"><span class="dashicons <?php echo esc_attr( $addon['icon'] ?? 'dashicons-star-filled' ); ?>"></span></div>
-                            <input type="hidden" name="addon_extras[<?php echo esc_attr( $idx ); ?>][icon]" value="<?php echo esc_attr( $addon['icon'] ?? 'dashicons-star-filled' ); ?>" class="acrb-icon-val">
-                            <input type="text" name="addon_extras[<?php echo esc_attr( $idx ); ?>][name]" value="<?php echo esc_attr( $addon['name'] ?? '' ); ?>" class="acrb-admin-input acrb-admin-flex-grow" placeholder="<?php esc_attr_e( 'Add-on Name (e.g. GPS Navigation, Child Seat)', 'awesome-car-rental' ); ?>">
-                            <input type="number" step="0.01" name="addon_extras[<?php echo esc_attr( $idx ); ?>][price]" value="<?php echo esc_attr( $addon['price'] ?? '' ); ?>" class="acrb-admin-input acrb-admin-w-140" placeholder="Price (<?php echo esc_html( $currency ); ?>)">
-                            <select name="addon_extras[<?php echo esc_attr( $idx ); ?>][type]" class="acrb-admin-select acrb-admin-w-140">
+                            <input type="hidden" name="addon_extras[<?php echo esc_attr( (string) $idx ); ?>][icon]" value="<?php echo esc_attr( $addon['icon'] ?? 'dashicons-star-filled' ); ?>" class="acrb-icon-val">
+                            <input type="text" name="addon_extras[<?php echo esc_attr( (string) $idx ); ?>][name]" value="<?php echo esc_attr( $addon['name'] ?? '' ); ?>" class="acrb-admin-input acrb-admin-flex-grow" placeholder="<?php esc_attr_e( 'Add-on Name (e.g. GPS Navigation, Child Seat)', 'awesome-car-rental' ); ?>">
+                            <input type="number" step="0.01" name="addon_extras[<?php echo esc_attr( (string) $idx ); ?>][price]" value="<?php echo esc_attr( $addon['price'] ?? '' ); ?>" class="acrb-admin-input acrb-admin-w-140" placeholder="Price (<?php echo esc_html( $currency ); ?>)">
+                            <select name="addon_extras[<?php echo esc_attr( (string) $idx ); ?>][type]" class="acrb-admin-select acrb-admin-w-140">
                                 <option value="day" <?php selected( $addon['type'] ?? 'day', 'day' ); ?>><?php esc_html_e( 'Per Day', 'awesome-car-rental' ); ?></option>
                                 <option value="flat" <?php selected( $addon['type'] ?? 'day', 'flat' ); ?>><?php esc_html_e( 'Flat Fee', 'awesome-car-rental' ); ?></option>
                             </select>
@@ -267,7 +203,7 @@ function acrb_extras_tab() {
             <!-- Technical Specifications Card -->
             <div class="acrb-admin-card">
                 <div class="acrb-admin-card-header">
-                    <span class="dashicons dashicons-admin-tools" style="color:#3b82f6;"></span>
+                    <span class="dashicons dashicons-admin-tools"></span>
                     <h3 class="acrb-admin-card-title"><?php esc_html_e( 'Technical Specifications', 'awesome-car-rental' ); ?></h3>
                 </div>
                 <div id="acrb-features-list" class="acrb-admin-row-list">
@@ -301,7 +237,7 @@ function acrb_extras_tab() {
             <!-- Comfort Amenities Card -->
             <div class="acrb-admin-card">
                 <div class="acrb-admin-card-header">
-                    <span class="dashicons dashicons-star-filled" style="color:#3b82f6;"></span>
+                    <span class="dashicons dashicons-star-filled"></span>
                     <h3 class="acrb-admin-card-title"><?php esc_html_e( 'Comfort Amenities', 'awesome-car-rental' ); ?></h3>
                 </div>
                 <div id="acrb-amenities-list" class="acrb-admin-row-list">

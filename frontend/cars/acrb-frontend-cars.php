@@ -1,12 +1,16 @@
 <?php
+/**
+ * [acrb_all_cars]
+ * Ultra-Modern Elite SaaS Fleet Archive with Live Filtering
+ *
+ * @package Awesome_Car_Rental
+ * @since   1.8.3
+ */
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-/**
- * [acrb_all_cars]
- * Modernized Elite SaaS Fleet Archive with Live Filtering
- */
 add_shortcode('acrb_all_cars', function() {
     $categories = get_terms([
         'taxonomy'   => 'acrb_car_category', 
@@ -165,56 +169,61 @@ add_shortcode('acrb_all_cars', function() {
 
     <style>
         :root { --acrb-blue: #3b82f6; --acrb-text: #0f172a; --acrb-bg: #f8fafc; }
-        .acrb-main-wrapper { display: flex; gap: 30px; align-items: flex-start; max-width: 1250px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; box-sizing: border-box; }
+        .acrb-main-wrapper { display: flex; gap: 32px; align-items: flex-start; max-width: 1280px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; box-sizing: border-box; }
         .acrb-main-wrapper *, .acrb-main-wrapper *::before, .acrb-main-wrapper *::after { box-sizing: border-box; }
         
         /* Sidebar Styles */
-        .acrb-sidebar { width: 300px; flex-shrink: 0; position: sticky; top: 30px; }
-        .acrb-filter-card { background: #fff; padding: 28px; border-radius: 16px; box-shadow: 0 4px 20px -2px rgba(0,0,0,0.03); border: 1px solid #e2e8f0; }
+        .acrb-sidebar { width: 300px; flex-shrink: 0; position: sticky; top: 32px; }
+        .acrb-filter-card { background: #fff; padding: 28px; border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); border: 1px solid #e2e8f0; }
         .acrb-filter-group { margin-bottom: 24px; }
         .acrb-filter-group:last-child { margin-bottom: 0; }
-        .acrb-filter-group h4 { font-size: 13px; margin: 0 0 14px 0; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+        .acrb-filter-group h4 { font-size: 12px; margin: 0 0 14px 0; color: #475569; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; }
         
         .acrb-search-wrap { position: relative; }
         .acrb-search-wrap .dashicons { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 18px; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; }
-        #acrb-car-search { width: 100%; height: 42px; padding: 0 14px 0 42px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; color: #1e293b; outline: none; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.01); transition: all 0.2s ease; }
+        #acrb-car-search { width: 100%; height: 44px; padding: 0 14px 0 42px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; color: #1e293b; outline: none; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.01); transition: all 0.25s ease; }
         #acrb-car-search:hover { border-color: #94a3b8; }
-        #acrb-car-search:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+        #acrb-car-search:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12); }
 
         .acrb-filter-list { list-style: none; padding: 0; margin: 0; }
         .acrb-filter-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .acrb-filter-item:last-child { margin-bottom: 0; }
         .acrb-filter-item label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; color: #334155; font-weight: 500; }
-        .acrb-filter-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: #3b82f6; cursor: pointer; }
+        .acrb-filter-item input[type="checkbox"] { width: 16px; height: 16px; accent-color: #3b82f6; cursor: pointer; border-radius: 4px; }
         .acrb-count-badge { background: #f1f5f9; padding: 2px 10px; border-radius: 20px; font-size: 12px; color: #64748b; font-weight: 600; }
 
         /* Grid Content */
         .acrb-content { flex: 1; min-width: 0; }
-        .acrb-car-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+        .acrb-car-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 28px; }
         
         /* Card Styling */
-        .acrb-card { background: #fff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04); transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; position: relative; }
-        .acrb-card:hover { transform: translateY(-6px); box-shadow: 0 20px 30px -10px rgba(59, 130, 246, 0.12); border-color: #cbd5e1; }
+        .acrb-card { background: #fff; border-radius: 20px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; position: relative; }
+        .acrb-card:hover { transform: translateY(-8px); box-shadow: 0 25px 35px -10px rgba(59, 130, 246, 0.12); border-color: #cbd5e1; }
         
-        .acrb-img-container { height: 210px; overflow: hidden; position: relative; background: #f8fafc; }
-        .acrb-img-container img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
-        .acrb-card:hover .acrb-img-container img { transform: scale(1.06); }
-        .acrb-badge { position: absolute; top: 14px; left: 14px; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px); color: #fff; padding: 6px 14px; border-radius: 30px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; z-index: 2; border: 1px solid rgba(255,255,255,0.1); }
+        .acrb-img-container { height: 220px; overflow: hidden; position: relative; background: #f8fafc; }
+        .acrb-img-container img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+        .acrb-card:hover .acrb-img-container img { transform: scale(1.08); }
+        .acrb-img-container::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 40%); pointer-events: none; }
+
+        .acrb-badge { position: absolute; top: 16px; left: 16px; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: #fff; padding: 6px 14px; border-radius: 30px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; z-index: 2; border: 1px solid rgba(255,255,255,0.15); }
 
         .acrb-card-body { padding: 24px; flex-grow: 1; display: flex; flex-direction: column; }
-        .acrb-card-title { font-size: 17px; font-weight: 700; color: #0f172a; text-decoration: none; display: block; margin-bottom: 16px; line-height: 1.35; letter-spacing: -0.3px; transition: color 0.2s ease; }
+        .acrb-card-title { font-size: 18px; font-weight: 800; color: #0f172a; text-decoration: none; display: block; margin-bottom: 16px; line-height: 1.35; letter-spacing: -0.3px; transition: color 0.2s ease; }
         .acrb-card-title:hover { color: #3b82f6; }
 
-        .acrb-spec-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; padding-top: 16px; border-top: 1px solid #f1f5f9; }
-        .acrb-spec-pill { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #475569; font-weight: 500; background: #f8fafc; padding: 8px 12px; border-radius: 8px; border: 1px solid #f1f5f9; }
+        .acrb-spec-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 24px; padding-top: 16px; border-top: 1px solid #f1f5f9; }
+        .acrb-spec-pill { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #334155; font-weight: 600; background: #f8fafc; padding: 9px 12px; border-radius: 10px; border: 1px solid #f1f5f9; transition: background 0.2s ease; }
+        .acrb-spec-pill:hover { background: #f1f5f9; }
         .acrb-spec-pill .dashicons { font-size: 16px; width: 16px; height: 16px; color: #3b82f6; display: inline-flex; align-items: center; justify-content: center; }
 
-        .acrb-card-footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid #f1f5f9; }
-        .acrb-price-val { font-size: 20px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; }
-        .acrb-price-label { font-size: 12px; color: #64748b; font-weight: 500; }
+        .acrb-card-footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 18px; border-top: 1px solid #f1f5f9; }
+        .acrb-price-val { font-size: 22px; font-weight: 900; color: #0f172a; letter-spacing: -0.6px; }
+        .acrb-price-label { font-size: 12px; color: #64748b; font-weight: 600; }
         
-        .acrb-btn-book { background: #3b82f6; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); display: inline-flex; align-items: center; gap: 6px; }
-        .acrb-btn-book:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4); color: #fff; text-decoration: none; }
+        .acrb-btn-book { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; text-decoration: none; padding: 11px 22px; border-radius: 10px; font-size: 13px; font-weight: 700; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35); display: inline-flex; align-items: center; gap: 8px; }
+        .acrb-btn-book:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5); color: #fff; text-decoration: none; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
+        .acrb-btn-book:hover .dashicons { transform: translateX(3px); }
+        .acrb-btn-book .dashicons { transition: transform 0.2s ease; }
 
         @media (max-width: 900px) {
             .acrb-main-wrapper { flex-direction: column; }

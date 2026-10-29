@@ -4,7 +4,7 @@
  * Routes actions to dedicated booking modules using the custom database table architecture.
  *
  * @package Awesome_Car_Rental
- * @since   1.6.0
+ * @since   1.2.0
  */
 
 declare( strict_types=1 );
@@ -14,183 +14,211 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 function acrb_bookings_tab() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'awesome-car-rental' ) );
+	}
+
 	global $wpdb;
 
 	$table_bookings = $wpdb->prefix . 'dev_nahian_bookings';
 	$action         = isset( $_GET['action'] ) ? sanitize_key( wp_unslash( $_GET['action'] ) ) : '';
 	$booking_id     = isset( $_GET['booking_id'] ) ? absint( $_GET['booking_id'] ) : 0;
+	$base_url       = admin_url( 'admin.php?page=awesome_car_rental&tab=bookings' );
 
-	// 1. Verify Nonce ONLY if an action is being performed
-	if ( ! empty( $action ) ) {
-		if ( ! isset( $_REQUEST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_REQUEST['_wpnonce'] ) ), 'acrb_car_action' ) ) {
-			wp_die( esc_html__( 'Security check failed. Please try again.', 'awesome-car-rental' ) );
-		}
-	}
-
-	// 2. Handle Deletion Action from Custom Database Table
+	/*--------------------------------------------------------------
+	# 1. Action Handler (Destructive Actions)
+	--------------------------------------------------------------*/
 	if ( 'delete' === $action && $booking_id > 0 ) {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have sufficient permissions to delete bookings.', 'awesome-car-rental' ) );
+		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_key( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+
+		// Verify specific nonce for this booking ID
+		if ( ! wp_verify_nonce( $nonce, 'acrb_delete_booking_' . $booking_id ) && ! wp_verify_nonce( $nonce, 'acrb_booking_action' ) ) {
+			wp_die( esc_html__( 'Security check failed. Please refresh and try again.', 'awesome-car-rental' ) );
 		}
 
-		// Verify record existence
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$exists = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table_bookings} WHERE id = %d", $booking_id ) );
-
-		if ( ! $exists ) {
-			wp_die( esc_html__( 'Invalid or non-existent booking record.', 'awesome-car-rental' ) );
-		}
-
-		// Perform deletion
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$deleted = $wpdb->delete( $table_bookings, array( 'id' => $booking_id ), array( '%d' ) );
+		$deleted = $wpdb->delete(
+			$table_bookings,
+			array( 'id' => $booking_id ),
+			array( '%d' )
+		);
 
 		if ( false === $deleted ) {
 			wp_die( esc_html__( 'Failed to delete the booking record from the database.', 'awesome-car-rental' ) );
 		}
 
+		// Invalidate cached stats
 		delete_transient( 'acrb_dashboard_revenue' );
+		delete_transient( 'acrb_booking_counts' );
 
-		$redirect_url = admin_url( 'admin.php?page=awesome_car_rental&tab=bookings&msg=deleted&booking_id=' . $booking_id );
-		wp_safe_redirect( $redirect_url );
+		$redirect_url = add_query_arg(
+			array(
+				'page' => 'awesome_car_rental',
+				'tab'  => 'bookings',
+				'msg'  => ( $deleted > 0 ) ? 'deleted' : 'not_found',
+			),
+			admin_url( 'admin.php' )
+		);
+
+		if ( ! headers_sent() ) {
+			wp_safe_redirect( $redirect_url );
+			exit;
+		}
+
+		echo '<script>window.location.href=' . wp_json_encode( esc_url_raw( $redirect_url ) ) . ';</script>';
 		exit;
 	}
 
-	$page_slug = 'awesome_car_rental';
-	$base_url  = admin_url( 'admin.php?page=' . $page_slug . '&tab=bookings' );
+	/*--------------------------------------------------------------
+	# 2. Cached Quick Stats for Header Badges
+	--------------------------------------------------------------*/
+	$counts = get_transient( 'acrb_booking_counts' );
+
+	if ( false === $counts ) {
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$total_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table_bookings}" );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$active_count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table_bookings} WHERE booking_status IN ('confirmed', 'active')" );
+
+		$counts = array(
+			'total'  => $total_count,
+			'active' => $active_count,
+		);
+
+		set_transient( 'acrb_booking_counts', $counts, 10 * MINUTE_IN_SECONDS );
+	}
+
+	$total_count  = $counts['total'];
+	$active_count = $counts['active'];
+
+	/*--------------------------------------------------------------
+	# 3. Flash Feedback Messages
+	--------------------------------------------------------------*/
+	$msg = isset( $_GET['msg'] ) ? sanitize_key( wp_unslash( $_GET['msg'] ) ) : '';
 	?>
 
-	<style>
-		/* Modern SaaS Layout Theme with Proper Spacing */
-		.acrb-dash-wrap { max-width: 1200px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1e293b; margin: 20px 20px 0 0; box-sizing: border-box; }
-		.acrb-dash-wrap *, .acrb-dash-wrap *::before, .acrb-dash-wrap *::after { box-sizing: border-box; }
-
-		/* Ultra-Premium Top Header Bar */
-		.acrb-header-flex { 
-			display: flex; 
-			justify-content: space-between; 
-			align-items: center; 
-			background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); 
-			border: 1px solid #e2e8f0; 
-			border-top: 3px solid #3b82f6;
-			border-radius: 14px; 
-			padding: 24px 32px; 
-			box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03); 
-			margin-bottom: 24px; 
-			position: relative;
-		}
-		.acrb-title-wrapper { display: flex; align-items: center; gap: 18px; width: 100%; }
-		.acrb-title-icon { width: 48px; height: 48px; min-width: 48px; background: #eff6ff; color: #3b82f6; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: inset 0 1px 2px rgba(59, 130, 246, 0.1); }
-		.acrb-title-icon .dashicons { font-size: 24px; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; }
-		
-		.acrb-title-content { display: flex; flex-direction: column; gap: 4px; }
-		.acrb-main-title { font-size: 22px; font-weight: 700; margin: 0; color: #0f172a; letter-spacing: -0.5px; line-height: 1.2; }
-		.acrb-sub-title { font-size: 13px; margin: 0; color: #64748b; font-weight: 400; line-height: 1.4; }
-		
-		/* Header Actions & Buttons */
-		.acrb-header-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-		.acrb-header-flex .button { 
-			background: #ffffff; 
-			color: #334155; 
-			border: 1px solid #cbd5e1; 
-			border-radius: 8px; 
-			padding: 10px 18px; 
-			font-weight: 600; 
-			text-decoration: none; 
-			display: inline-flex; 
-			align-items: center; 
-			gap: 8px; 
-			transition: all 0.25s ease; 
-			box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-			height: 38px;
-			font-size: 13px;
-		}
-		.acrb-header-flex .button .dashicons { font-size: 16px; width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; }
-		.acrb-header-flex .button:hover { background: #f8fafc; color: #0f172a; border-color: #94a3b8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-
-		@media(max-width: 900px) {
-			.acrb-header-flex { flex-direction: column; align-items: flex-start; gap: 20px; }
-			.acrb-header-actions { width: 100%; justify-content: flex-end; }
-		}
-	</style>
-
 	<div class="acrb-dash-wrap">
-		<!-- Elite SaaS Topbar Header -->
-		<header class="acrb-header-flex">
-			<div class="acrb-title-wrapper">
-				<div class="acrb-title-icon">
+
+		<?php if ( 'deleted' === $msg ) : ?>
+			<div class="notice notice-success is-dismissible" style="margin: 15px 0;">
+				<p><?php esc_html_e( 'Booking record deleted successfully.', 'awesome-car-rental' ); ?></p>
+			</div>
+		<?php elseif ( 'not_found' === $msg ) : ?>
+			<div class="notice notice-warning is-dismissible" style="margin: 15px 0;">
+				<p><?php esc_html_e( 'The requested booking record was not found or already deleted.', 'awesome-car-rental' ); ?></p>
+			</div>
+		<?php endif; ?>
+
+		<!-- Styled Topbar -->
+		<div class="acrb-topbar-header">
+			<div class="acrb-topbar-left">
+				<div class="acrb-topbar-icon">
 					<span class="dashicons dashicons-calendar-alt"></span>
 				</div>
-				<div class="acrb-title-content">
-					<h1 class="acrb-main-title">
-						<?php 
+				<div class="acrb-topbar-text">
+					<h1>
+						<?php
 						if ( 'edit' === $action ) {
-							esc_html_e( 'Manage & Edit Reservation', 'awesome-car-rental' );
+							esc_html_e( 'Edit Reservation', 'awesome-car-rental' );
 						} elseif ( 'view' === $action ) {
 							esc_html_e( 'Reservation Details', 'awesome-car-rental' );
 						} elseif ( 'print' === $action ) {
-							esc_html_e( 'Print Dispatch Manifest', 'awesome-car-rental' );
+							esc_html_e( 'Print Document', 'awesome-car-rental' );
 						} else {
-							esc_html_e( 'Fleet Booking Directory', 'awesome-car-rental' );
+							esc_html_e( 'Bookings & Reservations', 'awesome-car-rental' );
 						}
 						?>
 					</h1>
-					<p class="acrb-sub-title">
-						<?php 
+					<p>
+						<?php
 						if ( ! empty( $action ) && $booking_id > 0 ) {
-							printf( esc_html__( 'Viewing parameters for record ID #%d', 'awesome-car-rental' ), absint( $booking_id ) );
+							printf(
+								/* translators: %d: Booking ID number */
+								esc_html__( 'Managing details and parameters for record #%d', 'awesome-car-rental' ),
+								absint( $booking_id )
+							);
 						} else {
-							esc_html_e( 'Manage and monitor all incoming vehicle reservations and rental statuses.', 'awesome-car-rental' );
+							esc_html_e( 'Manage vehicle schedules, monitor customer reservations, and track dispatch status.', 'awesome-car-rental' );
 						}
 						?>
 					</p>
 				</div>
 			</div>
 
-			<div class="acrb-header-actions">
+			<div class="acrb-topbar-actions">
 				<?php if ( ! empty( $action ) ) : ?>
-					<a href="<?php echo esc_url( $base_url ); ?>" class="button">
-						<span class="dashicons dashicons-arrow-left-alt2"></span> 
-						<span><?php esc_html_e( 'Return to Bookings', 'awesome-car-rental' ); ?></span>
+					<a href="<?php echo esc_url( $base_url ); ?>" class="acrb-topbar-btn button">
+						<span class="dashicons dashicons-arrow-left-alt2"></span>
+						<span><?php esc_html_e( 'Back to List', 'awesome-car-rental' ); ?></span>
 					</a>
+				<?php else : ?>
+					<div class="acrb-stat-pill">
+						<span><?php esc_html_e( 'Active:', 'awesome-car-rental' ); ?></span>
+						<strong><?php echo esc_html( (string) $active_count ); ?></strong>
+						<span style="color:#cbd5e1; margin: 0 4px;">|</span>
+						<span><?php esc_html_e( 'Total:', 'awesome-car-rental' ); ?></span>
+						<strong><?php echo esc_html( (string) $total_count ); ?></strong>
+					</div>
 				<?php endif; ?>
 			</div>
-		</header>
+		</div>
 
-		<!-- Router Content Switcher -->
-		<main>
+		<!-- Main Content Router -->
+		<main class="acrb-main-container">
 			<?php
 			switch ( $action ) {
 				case 'edit':
-					if ( $booking_id > 0 ) {
+					if ( function_exists( 'acrb_render_booking_form' ) ) {
+						acrb_render_booking_form( $booking_id );
+					} elseif ( file_exists( ACRB_PATH . 'admin/bookings/bookings-edit.php' ) ) {
 						require_once ACRB_PATH . 'admin/bookings/bookings-edit.php';
 					} else {
-						require_once ACRB_PATH . 'admin/bookings/bookings-list.php';
+						acrb_load_default_booking_list();
 					}
 					break;
 
 				case 'view':
-					if ( $booking_id > 0 ) {
+					if ( function_exists( 'acrb_render_booking_view' ) ) {
+						acrb_render_booking_view( $booking_id );
+					} elseif ( file_exists( ACRB_PATH . 'admin/bookings/bookings-view.php' ) ) {
 						require_once ACRB_PATH . 'admin/bookings/bookings-view.php';
 					} else {
-						require_once ACRB_PATH . 'admin/bookings/bookings-list.php';
+						acrb_load_default_booking_list();
 					}
 					break;
 
 				case 'print':
-					if ( $booking_id > 0 ) {
+					if ( function_exists( 'acrb_render_booking_print' ) ) {
+						acrb_render_booking_print( $booking_id );
+					} elseif ( file_exists( ACRB_PATH . 'admin/bookings/bookings-print.php' ) ) {
 						require_once ACRB_PATH . 'admin/bookings/bookings-print.php';
 					} else {
-						require_once ACRB_PATH . 'admin/bookings/bookings-list.php';
+						acrb_load_default_booking_list();
 					}
 					break;
 
 				default:
-					require_once ACRB_PATH . 'admin/bookings/bookings-list.php';
+					acrb_load_default_booking_list();
 					break;
 			}
 			?>
 		</main>
 	</div>
 	<?php
+}
+
+/**
+ * Helper to safely resolve the default list view without duplicated require calls
+ */
+function acrb_load_default_booking_list() {
+	if ( function_exists( 'acrb_render_booking_list' ) ) {
+		acrb_render_booking_list();
+	} elseif ( file_exists( ACRB_PATH . 'admin/bookings/acrb-bookings-list.php' ) ) {
+		require_once ACRB_PATH . 'admin/bookings/acrb-bookings-list.php';
+	} elseif ( file_exists( ACRB_PATH . 'admin/bookings/bookings-list.php' ) ) {
+		require_once ACRB_PATH . 'admin/bookings/bookings-list.php';
+	} else {
+		echo '<div class="notice notice-error"><p>' . esc_html__( 'Error: Bookings list template file could not be found.', 'awesome-car-rental' ) . '</p></div>';
+	}
 }

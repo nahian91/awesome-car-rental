@@ -1,7 +1,10 @@
 <?php
 /**
  * [acrb_car_grid limit="6" orderby="rand"]
- * Modernized Elite SaaS Car Grid Shortcode
+ * Ultra-Modern Elite SaaS Car Grid Shortcode
+ *
+ * @package Awesome_Car_Rental
+ * @since   1.8.3
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -44,44 +47,48 @@ add_shortcode('acrb_car_grid', function($atts) {
     ob_start(); ?>
 
     <style>
-        /* Elite SaaS Grid Styles */
-        .acrb-grid-wrapper { padding: 30px 0; max-width: 1250px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1e293b; box-sizing: border-box; }
+        /* Elite SaaS Grid Wrapper */
+        .acrb-grid-wrapper { padding: 40px 0; max-width: 1280px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #0f172a; box-sizing: border-box; }
         .acrb-grid-wrapper *, .acrb-grid-wrapper *::before, .acrb-grid-wrapper *::after { box-sizing: border-box; }
         
-        .acrb-car-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 30px; }
+        .acrb-car-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 32px; }
         
         /* Card Design */
-        .acrb-card { background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04); transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; border: 1px solid #e2e8f0; position: relative; }
-        .acrb-card:hover { transform: translateY(-6px); box-shadow: 0 20px 30px -10px rgba(59, 130, 246, 0.12); border-color: #cbd5e1; }
+        .acrb-card { background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.05); transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; border: 1px solid #e2e8f0; position: relative; }
+        .acrb-card:hover { transform: translateY(-8px); box-shadow: 0 25px 35px -10px rgba(59, 130, 246, 0.12), 0 10px 15px -5px rgba(15, 23, 42, 0.04); border-color: #cbd5e1; }
         
-        /* Image Area */
+        /* Image Area & Overlay */
         .acrb-img-container { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: #f8fafc; }
-        .acrb-img-container img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
-        .acrb-card:hover .acrb-img-container img { transform: scale(1.06); }
+        .acrb-img-container img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+        .acrb-card:hover .acrb-img-container img { transform: scale(1.08); }
+        .acrb-img-container::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, transparent 40%); pointer-events: none; }
         
-        /* Floating Badge */
-        .acrb-badge { position: absolute; top: 14px; left: 14px; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px); color: #fff; padding: 6px 14px; border-radius: 30px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; z-index: 2; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.1); }
+        /* Floating Glassmorphic Badge */
+        .acrb-badge { position: absolute; top: 16px; left: 16px; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: #fff; padding: 6px 14px; border-radius: 30px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; z-index: 2; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.15); }
         
         /* Body Content */
         .acrb-card-body { padding: 24px; flex-grow: 1; display: flex; flex-direction: column; }
-        .acrb-card-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; line-height: 1.35; letter-spacing: -0.3px; }
+        .acrb-card-title { font-size: 19px; font-weight: 800; margin-bottom: 16px; line-height: 1.3; letter-spacing: -0.4px; }
         .acrb-card-title a { text-decoration: none; color: #0f172a; transition: color 0.2s ease; }
         .acrb-card-title a:hover { color: #3b82f6; }
         
         /* Features/Specs Grid */
-        .acrb-spec-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; padding-top: 16px; border-top: 1px solid #f1f5f9; }
-        .acrb-spec-item { display: flex; align-items: center; gap: 8px; color: #475569; font-size: 13px; font-weight: 500; background: #f8fafc; padding: 8px 12px; border-radius: 8px; border: 1px solid #f1f5f9; }
+        .acrb-spec-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 24px; padding-top: 16px; border-top: 1px solid #f1f5f9; }
+        .acrb-spec-item { display: flex; align-items: center; gap: 8px; color: #334155; font-size: 13px; font-weight: 600; background: #f8fafc; padding: 9px 12px; border-radius: 10px; border: 1px solid #f1f5f9; transition: background 0.2s ease; }
+        .acrb-spec-item:hover { background: #f1f5f9; }
         .acrb-spec-item .dashicons { font-size: 16px; width: 16px; height: 16px; color: #3b82f6; display: inline-flex; align-items: center; justify-content: center; }
         
-        /* Footer/Price */
-        .acrb-card-footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid #f1f5f9; }
-        .acrb-price-block { display: flex; align-items: baseline; gap: 2px; }
-        .acrb-price-val { font-size: 20px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; }
-        .acrb-price-label { font-size: 12px; color: #64748b; font-weight: 500; }
+        /* Footer & Pricing */
+        .acrb-card-footer { margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding-top: 18px; border-top: 1px solid #f1f5f9; }
+        .acrb-price-block { display: flex; align-items: baseline; gap: 3px; }
+        .acrb-price-val { font-size: 22px; font-weight: 900; color: #0f172a; letter-spacing: -0.6px; }
+        .acrb-price-label { font-size: 12px; color: #64748b; font-weight: 600; }
         
-        /* Action Button */
-        .acrb-btn-book { background: #3b82f6; color: #fff !important; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px; transition: all 0.2s ease; text-align: center; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); display: inline-flex; align-items: center; gap: 6px; }
-        .acrb-btn-book:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4); text-decoration: none; color: #fff !important; }
+        /* Elite Action Button */
+        .acrb-btn-book { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff !important; padding: 11px 22px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 13px; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); text-align: center; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35); display: inline-flex; align-items: center; gap: 8px; }
+        .acrb-btn-book:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5); text-decoration: none; color: #fff !important; background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
+        .acrb-btn-book:hover .dashicons { transform: translateX(3px); }
+        .acrb-btn-book .dashicons { transition: transform 0.2s ease; }
 
         /* Fallback Thumbnail */
         .acrb-no-thumb { height: 100%; display: flex; align-items: center; justify-content: center; color: #cbd5e1; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); }
@@ -100,7 +107,6 @@ add_shortcode('acrb_car_grid', function($atts) {
                 
                 $features = get_post_meta(get_the_ID(), 'acrb_car_features', true);
                 if ( empty($features) ) {
-                    // Fallback to standard meta specs if available
                     $features = get_post_meta(get_the_ID(), 'car_specs', true);
                 }
                 
@@ -136,7 +142,6 @@ add_shortcode('acrb_car_grid', function($atts) {
                                 $count = 0;
                                 foreach($features as $key => $f): 
                                     if ($count < 4): 
-                                        // Handle both associative array specs and indexed feature lists
                                         $icon = 'dashicons-yes';
                                         $val = '';
                                         if (is_array($f)) {

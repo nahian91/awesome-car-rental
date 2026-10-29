@@ -1,10 +1,16 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) exit;
-
 /**
  * [acrb_header_auth] 
- * Displays "Hi, Name", Avatar, and Login/Register buttons with Elite SaaS Styling
+ * Ultra-Modern Elite SaaS Header Auth Widget
+ *
+ * @package Awesome_Car_Rental
+ * @since   1.8.3
  */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
 add_shortcode('acrb_header_auth', function() {
     ob_start(); ?>
     
@@ -14,27 +20,27 @@ add_shortcode('acrb_header_auth', function() {
         .acrb-header-auth *, .acrb-header-auth *::before, .acrb-header-auth *::after { box-sizing: border-box; }
 
         /* Logged In User State */
-        .acrb-user-wrapper { display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 6px 12px; border-radius: 30px; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.01); }
-        .acrb-user-wrapper:hover { background: #fff; border-color: #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.04); text-decoration: none; }
+        .acrb-user-wrapper { display: flex; align-items: center; gap: 12px; text-decoration: none; padding: 6px 14px 6px 6px; border-radius: 9999px; background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 2px 5px rgba(15, 23, 42, 0.02); }
+        .acrb-user-wrapper:hover { background: #fff; border-color: #cbd5e1; box-shadow: 0 8px 20px -4px rgba(59, 130, 246, 0.12); text-decoration: none; transform: translateY(-1px); }
         
-        .acrb-avatar-img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .acrb-avatar-img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
         
-        .acrb-user-info { display: flex; flex-direction: column; line-height: 1.2; text-align: left; }
-        .acrb-hi { font-size: 11px; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-        .acrb-user-name { font-size: 14px; font-weight: 700; color: #0f172a; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .acrb-user-info { display: flex; flex-direction: column; line-height: 1.25; text-align: left; }
+        .acrb-hi { font-size: 10.5px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; }
+        .acrb-user-name { font-size: 13.5px; font-weight: 800; color: #0f172a; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: -0.2px; }
 
         /* Guest Auth Group */
         .acrb-auth-group { display: flex; align-items: center; gap: 10px; }
         
-        .acrb-h-btn { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-size: 13px; font-weight: 600; padding: 9px 18px; border-radius: 8px; transition: all 0.2s ease; height: 40px; box-sizing: border-box; }
+        .acrb-h-btn { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-size: 13px; font-weight: 700; padding: 0 20px; border-radius: 10px; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); height: 42px; box-sizing: border-box; }
         
-        .acrb-h-login { background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.01); }
-        .acrb-h-login:hover { background: #f1f5f9; color: #0f172a; border-color: #94a3b8; text-decoration: none; }
+        .acrb-h-login { background: #f8fafc; color: #334155; border: 1px solid #cbd5e1; box-shadow: 0 2px 5px rgba(15, 23, 42, 0.02); }
+        .acrb-h-login:hover { background: #f1f5f9; color: #0f172a; border-color: #94a3b8; text-decoration: none; transform: translateY(-1px); }
         
-        .acrb-h-reg { background: #3b82f6; color: #fff; border: 1px solid #3b82f6; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
-        .acrb-h-reg:hover { background: #2563eb; border-color: #2563eb; color: #fff; text-decoration: none; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4); }
+        .acrb-h-reg { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; border: 1px solid transparent; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35); }
+        .acrb-h-reg:hover { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #fff; text-decoration: none; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5); }
 
-        .acrb-h-icon { width: 16px; height: 16px; fill: currentColor; }
+        .acrb-h-icon { width: 16px; height: 16px; fill: currentColor; opacity: 0.8; }
     </style>
 
     <div class="acrb-header-auth">

@@ -1,10 +1,16 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) exit;
-
 /**
  * [acrb_search_form]
  * Standalone Search Bar for the Homepage and Results Page (Elite SaaS Modernized)
+ *
+ * @package Awesome_Car_Rental
+ * @since   1.8.3
  */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
 add_shortcode('acrb_search_form', function() {
     // 1. Pull locations from settings
     $locations = get_option('acrb_custom_pickup_locations', []) ?: get_option('acrb_custom_locations', []);
@@ -21,24 +27,24 @@ add_shortcode('acrb_search_form', function() {
     ob_start(); ?>
     
     <style>
-        .acrb-search-wrapper { max-width: 1200px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; box-sizing: border-box; }
+        .acrb-search-wrapper { max-width: 1280px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; box-sizing: border-box; }
         .acrb-search-wrapper *, .acrb-search-wrapper *::before, .acrb-search-wrapper *::after { box-sizing: border-box; }
 
-        .acrb-search-form { background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 24px 28px; box-shadow: 0 10px 30px -5px rgba(0,0,0,0.05); }
-        .acrb-search-main { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 16px; align-items: flex-end; }
+        .acrb-search-form { background: #fff; border: 1px solid #e2e8f0; border-radius: 24px; padding: 28px 32px; box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.05); }
+        .acrb-search-main { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 20px; align-items: flex-end; }
 
         .acrb-search-field { display: flex; flex-direction: column; }
-        .acrb-search-field label { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px; }
+        .acrb-search-field label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px; }
         .acrb-search-field label .dashicons { font-size: 16px; width: 16px; height: 16px; color: #3b82f6; display: inline-flex; align-items: center; justify-content: center; }
 
-        .acrb-search-select, .acrb-search-input { width: 100%; height: 44px; padding: 0 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; color: #1e293b; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.01); transition: all 0.2s ease; }
-        .acrb-search-select { appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 14px center; background-size: 10px; padding-right: 36px; }
+        .acrb-search-select, .acrb-search-input { width: 100%; height: 46px; padding: 0 16px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; color: #1e293b; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.01); transition: all 0.25s ease; }
+        .acrb-search-select { appearance: none; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 16px center; background-size: 10px; padding-right: 40px; cursor: pointer; }
         
         .acrb-search-select:hover, .acrb-search-input:hover { border-color: #94a3b8; }
-        .acrb-search-select:focus, .acrb-search-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); outline: none; }
+        .acrb-search-select:focus, .acrb-search-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12); outline: none; }
 
-        .acrb-search-submit { height: 44px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; padding: 0 24px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35); transition: background 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
-        .acrb-search-submit:hover { background: #2563eb; }
+        .acrb-search-submit { height: 46px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; border: none; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; padding: 0 28px; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); display: inline-flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; }
+        .acrb-search-submit:hover { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5); }
         .acrb-search-submit .dashicons { font-size: 16px; width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; }
 
         @media (max-width: 1024px) {

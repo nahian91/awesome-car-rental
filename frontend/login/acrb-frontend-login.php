@@ -2,9 +2,14 @@
 /**
  * [acrb_login] AJAX Login System (Elite SaaS Modernized)
  * Optimized for Security, UI, and Internationalization.
+ *
+ * @package Awesome_Car_Rental
+ * @since   1.8.3
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
 // 1. BACKEND LOGIC: AJAX Authenticator
 add_action('wp_ajax_nopriv_acrb_ajax_login', 'acrb_handle_ajax_login');
@@ -54,41 +59,41 @@ add_shortcode('acrb_login', function() {
     ob_start(); ?>
     
     <style>
-        .acrb-auth-page-wrapper { max-width: 960px; margin: 40px auto; display: flex; background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; box-sizing: border-box; }
+        .acrb-auth-page-wrapper { max-width: 980px; margin: 40px auto; display: flex; background: #fff; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.08); border: 1px solid #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; box-sizing: border-box; }
         .acrb-auth-page-wrapper *, .acrb-auth-page-wrapper *::before, .acrb-auth-page-wrapper *::after { box-sizing: border-box; }
 
-        .acrb-auth-side-info { flex: 1; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 50px; color: #fff; display: flex; flex-direction: column; justify-content: center; position: relative; }
-        .acrb-auth-card { flex: 1.2; padding: 50px; background: #fff; display: flex; flex-direction: column; justify-content: center; }
+        .acrb-auth-side-info { flex: 1; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 60px 50px; color: #fff; display: flex; flex-direction: column; justify-content: center; position: relative; }
+        .acrb-auth-card { flex: 1.2; padding: 60px 50px; background: #fff; display: flex; flex-direction: column; justify-content: center; }
         
-        .acrb-auth-side-info h2 { color: #fff !important; font-size: 28px; margin: 0 0 16px 0; font-weight: 800; line-height: 1.25; letter-spacing: -0.5px; }
-        .acrb-auth-side-info p { color: #94a3b8; line-height: 1.6; font-size: 14px; margin: 0; }
+        .acrb-auth-side-info h2 { color: #fff !important; font-size: 32px; margin: 0 0 16px 0; font-weight: 800; line-height: 1.2; letter-spacing: -0.8px; }
+        .acrb-auth-side-info p { color: #94a3b8; line-height: 1.6; font-size: 14.5px; margin: 0; }
         
-        .acrb-auth-title { font-size: 24px; font-weight: 800; color: #0f172a; margin: 0 0 6px 0; letter-spacing: -0.5px; }
-        .acrb-auth-subtitle { color: #64748b; font-size: 14px; margin: 0 0 28px 0; }
+        .acrb-auth-title { font-size: 26px; font-weight: 800; color: #0f172a; margin: 0 0 6px 0; letter-spacing: -0.6px; }
+        .acrb-auth-subtitle { color: #64748b; font-size: 14px; margin: 0 0 32px 0; }
         
-        .acrb-login-field { margin-bottom: 20px; }
-        .acrb-login-field label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 8px; }
-        .acrb-login-field input { width: 100%; height: 44px; padding: 0 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; color: #1e293b; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.01); transition: all 0.2s ease; }
+        .acrb-login-field { margin-bottom: 22px; }
+        .acrb-login-field label { display: block; font-size: 13px; font-weight: 700; color: #334155; margin-bottom: 8px; }
+        .acrb-login-field input { width: 100%; height: 46px; padding: 0 16px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; color: #1e293b; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.01); transition: all 0.25s ease; }
         .acrb-login-field input:hover { border-color: #94a3b8; }
-        .acrb-login-field input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); outline: none; background: #fff; }
+        .acrb-login-field input:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12); outline: none; background: #fff; }
         
-        .acrb-login-btn { width: 100%; height: 46px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-weight: 700; font-size: 15px; cursor: pointer; margin-top: 6px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35); transition: background 0.2s; display: inline-flex; align-items: center; justify-content: center; }
-        .acrb-login-btn:hover { background: #2563eb; }
-        .acrb-login-btn:disabled { background: #94a3b8; cursor: not-allowed; box-shadow: none; }
+        .acrb-login-btn { width: 100%; height: 48px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; border: none; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer; margin-top: 8px; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); display: inline-flex; align-items: center; justify-content: center; }
+        .acrb-login-btn:hover { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5); }
+        .acrb-login-btn:disabled { background: #94a3b8; cursor: not-allowed; box-shadow: none; transform: none; }
         
-        .acrb-auth-footer { text-align: center; margin-top: 24px; font-size: 13px; color: #64748b; }
+        .acrb-auth-footer { text-align: center; margin-top: 28px; font-size: 13.5px; color: #64748b; }
         .acrb-auth-footer a { color: #3b82f6; font-weight: 700; text-decoration: none; }
         .acrb-auth-footer a:hover { text-decoration: underline; }
 
-        #acrb-login-status { margin-top: 16px; font-size: 13px; text-align: center; min-height: 24px; font-weight: 500; }
-        .status-error { color: #b91c1c; padding: 10px 14px; background: #fee2e2; border-radius: 8px; border: 1px solid #fecaca; }
+        #acrb-login-status { margin-top: 16px; font-size: 13px; text-align: center; min-height: 24px; font-weight: 600; }
+        .status-error { color: #b91c1c; padding: 12px 16px; background: #fee2e2; border-radius: 10px; border: 1px solid #fecaca; }
         .status-loading { color: #3b82f6; font-weight: 600; }
         .status-success { color: #15803d; font-weight: 600; }
 
         @media (max-width: 768px) {
             .acrb-auth-page-wrapper { flex-direction: column; margin: 20px; }
-            .acrb-auth-side-info { padding: 40px 24px; }
-            .acrb-auth-card { padding: 40px 24px; }
+            .acrb-auth-side-info { padding: 40px 28px; }
+            .acrb-auth-card { padding: 40px 28px; }
         }
     </style>
 
@@ -96,9 +101,9 @@ add_shortcode('acrb_login', function() {
         <div class="acrb-auth-side-info">
             <h2><?php esc_html_e( 'Fast. Seamless.', 'awesome-car-rental' ); ?><br><?php esc_html_e( 'Secure.', 'awesome-car-rental' ); ?></h2>
             <p><?php esc_html_e( 'Access your private dashboard to manage your fleet, download receipts, and update your preferences.', 'awesome-car-rental' ); ?></p>
-            <div style="margin-top: 32px; display: flex; gap: 12px; align-items: center; background: rgba(255,255,255,0.06); padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);">
-                <span class="dashicons dashicons-shield" style="color:#60a5fa; font-size: 20px; width: 20px; height: 20px;"></span>
-                <span style="font-size: 13px; color: #cbd5e1;"><?php esc_html_e( 'Your data is encrypted and secure.', 'awesome-car-rental' ); ?></span>
+            <div style="margin-top: 36px; display: flex; gap: 14px; align-items: center; background: rgba(255,255,255,0.06); padding: 16px 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+                <span class="dashicons dashicons-shield" style="color:#60a5fa; font-size: 22px; width: 22px; height: 22px;"></span>
+                <span style="font-size: 13px; color: #cbd5e1; font-weight: 500;"><?php esc_html_e( 'Your data is encrypted and secure.', 'awesome-car-rental' ); ?></span>
             </div>
         </div>
 
@@ -117,7 +122,7 @@ add_shortcode('acrb_login', function() {
                 <div class="acrb-login-field" style="margin-bottom: 24px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <label style="margin-bottom: 0;"><?php esc_html_e( 'Password', 'awesome-car-rental' ); ?></label>
-                        <a href="<?php echo esc_url( wp_lostpassword_url() ); ?>" style="font-size: 12px; color: #3b82f6; font-weight: 600; text-decoration: none;">
+                        <a href="<?php echo esc_url( wp_lostpassword_url() ); ?>" style="font-size: 12px; color: #3b82f6; font-weight: 700; text-decoration: none;">
                             <?php esc_html_e( 'Forgot?', 'awesome-car-rental' ); ?>
                         </a>
                     </div>

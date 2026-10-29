@@ -1,367 +1,255 @@
 <?php
 /**
  * Availability Calendar Module (`calendar.php`)
- * Interactive fleet booking calendar with color-coded reservation states and asset timelines.
+ * Full 12-Month multi-grid view with color-coded daily states, car selector, and year filter.
  *
  * @package Awesome_Car_Rental
- * @since   1.3.3
+ * @since   2.2.0
  */
 
 declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
-	exit;
+    exit;
 }
 
 if ( ! current_user_can( 'manage_options' ) ) {
-	wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'awesome-car-rental' ), 403 );
+    wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'awesome-car-rental' ), 403 );
 }
 
 global $wpdb;
 
-$table_cars     =$wpdb->prefix . 'dev_nahian_cars';
-$table_bookings =$wpdb->prefix . 'dev_nahian_bookings';
+$table_bookings = $wpdb->prefix . 'dev_nahian_bookings';
 
-// Resolve current selected month/year or default to today.
-$current_year  = isset($_GET['cal_year'] ) ? absint( $_GET['cal_year'] ) : (int) gmdate( 'Y' );$current_month = isset( $_GET['cal_month'] ) ? absint( $_GET['cal_month'] ) : (int) gmdate( 'm' );
+// Resolve selected year and car filter (Month is looped 1 to 12)
+$current_year = isset( $_GET['cal_year'] ) ? absint( $_GET['cal_year'] ) : (int) gmdate( 'Y' );
+$selected_car = isset( $_GET['car_id'] ) ? absint( $_GET['car_id'] ) : 0;
 
-if ( $current_month < 1 || $current_month > 12 ) {$current_month = (int) gmdate( 'm' );
-}
-if ( $current_year < 2020 || $current_year > 2040 ) {$current_year = (int) gmdate( 'Y' );
-}
-
-$days_in_month = (int) cal_days_in_month( CAL_GREGORIAN,$current_month, $current_year );$month_start   = sprintf( '%04d-%02d-01 00:00:00', $current_year,$current_month );
-$month_end     = sprintf( '\%04d-\%02d-\%02d 23:59:59',$current_year, $current_month,$days_in_month );
-
-// Fetch all registered fleet vehicles.
-// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-$cars =$wpdb->get_results( "SELECT id, name, brand FROM {$table_cars} ORDER BY name ASC", ARRAY_A );
-
-// Fetch all bookings overlapping with this month.
-// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-$bookings = $wpdb->get_results($wpdb->prepare(
-		"SELECT * FROM {$table_bookings} 
-		WHERE (pickup_date <= %s AND return_date >= %s) AND booking_status != 'cancelled'",
-		sprintf( '%04d-%02d-%02d', $current_year, $current_month,$days_in_month ),
-		sprintf( '%04d-%02d-01', $current_year,$current_month )
-	),
-	ARRAY_A
-);
-
-// Map bookings by car ID for quick timeline rendering.
-$bookings_map = array();
-if ( ! empty( $bookings ) ) {
-	foreach ( $bookings as$b ) {
-		$car_id = absint($b['car_id'] ?? 0 );
-		if ( $car_id > 0 ) {$bookings_map[ $car_id ][] =$b;
-		}
-	}
+if ( $current_year < 2020 || $current_year > 2040 ) {
+    $current_year = (int) gmdate( 'Y' );
 }
 
-// Navigation month links computation.
-$prev_month =$current_month - 1;
-$prev_year  =$current_year;
-if ( $prev_month < 1 ) {$prev_month = 12;
-	$prev_year--;
+$year_start = sprintf( '%04d-01-01', $current_year );
+$year_end   = sprintf( '%04d-12-31', $current_year );
+
+// 1. LOAD ALL VEHICLES FROM CUSTOM POST TYPE 'acrb_cars'
+$car_posts = get_posts( array(
+    'post_type'   => 'acrb_cars',
+    'numberposts' => -1,
+    'post_status' => 'publish',
+    'orderby'     => 'title',
+    'order'       => 'ASC',
+) );
+
+$cars = array();
+if ( ! empty( $car_posts ) ) {
+    foreach ( $car_posts as $cp ) {
+        $c_id       = absint( $cp->ID );
+        $c_title    = esc_html( $cp->post_title );
+        $terms      = wp_get_post_terms( $c_id, 'acrb_categories', array( 'fields' => 'names' ) );
+        $meta_brand = get_post_meta( $c_id, 'brand', true );
+        $brand      = ! empty( $terms ) && ! is_wp_error( $terms ) ? esc_html( $terms[0] ) : ( ! empty( $meta_brand ) ? esc_html( $meta_brand ) : __( 'Fleet Vehicle', 'awesome-car-rental' ) );
+
+        $cars[] = array(
+            'id'    => $c_id,
+            'name'  => $c_title,
+            'brand' => $brand,
+        );
+    }
 }
 
-$next_month =$current_month + 1;
-$next_year  =$current_year;
-if ( $next_month > 12 ) {$next_month = 1;
-	$next_year++;
+// 2. FETCH ALL BOOKINGS OVERLAPPING WITH THIS ENTIRE YEAR (CPT + Meta Fallback)
+$cpt_bookings = get_posts( array(
+    'post_type'   => 'acrb_bookings',
+    'numberposts' => -1,
+    'post_status' => 'publish',
+) );
+
+$bookings = array();
+if ( ! empty( $cpt_bookings ) ) {
+    foreach ( $cpt_bookings as $cb ) {
+        $b_id     = $cb->ID;
+        $b_car_id = absint( get_post_meta( $b_id, 'car_id', true ) );
+        $p_date   = get_post_meta( $b_id, 'pickup_date', true );
+        $r_date   = get_post_meta( $b_id, 'return_date', true );
+        $b_status = get_post_meta( $b_id, 'status', true ) ?: 'pending';
+        $c_name   = get_post_meta( $b_id, 'customer_name', true ) ?: 'Client';
+
+        if ( 'cancelled' !== $b_status && ! empty( $p_date ) && ! empty( $r_date ) ) {
+            if ( $p_date <= $year_end && $r_date >= $year_start ) {
+                if ( 0 === $selected_car || $selected_car === $b_car_id ) {
+                    $bookings[] = array(
+                        'id'            => $b_id,
+                        'booking_code'  => 'ACR-' . $b_id,
+                        'car_id'        => $b_car_id,
+                        'customer_name' => $c_name,
+                        'pickup_date'   => $p_date,
+                        'return_date'   => $r_date,
+                    );
+                }
+            }
+        }
+    }
+} else {
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+    $bookings_query = "SELECT * FROM {$table_bookings} 
+                       WHERE (pickup_date <= %s AND return_date >= %s) 
+                       AND booking_status != 'cancelled'";
+    $query_args = array( $year_end, $year_start );
+
+    if ( $selected_car > 0 ) {
+        $bookings_query .= " AND car_id = %d";
+        $query_args[]    = $selected_car;
+    }
+
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+    $bookings = $wpdb->get_results( $wpdb->prepare( $bookings_query, ...$query_args ), ARRAY_A );
 }
+
+// Year navigation computations
+$prev_year_val = $current_year - 1;
+$next_year_val = $current_year + 1;
 
 $base_calendar_url = add_query_arg(
-	array(
-		'page' => 'awesome_car_rental',
-		'tab'  => 'calendar',
-	),
-	admin_url( 'admin.php' )
+    array(
+        'page'   => 'awesome_car_rental',
+        'tab'    => 'calendar',
+        'car_id' => $selected_car,
+    ),
+    admin_url( 'admin.php' )
 );
 
-$prev_url = add_query_arg( array( 'cal_month' => $prev_month, 'cal_year' =>$prev_year ), $base_calendar_url );$next_url = add_query_arg( array( 'cal_month' => $next_month, 'cal_year' =>$next_year ), $base_calendar_url );$current_month_name = gmdate( 'F Y', mktime( 0, 0, 0, $current_month, 1,$current_year ) );
+$prev_year_url = add_query_arg( array( 'cal_year' => $prev_year_val ), $base_calendar_url );
+$next_year_url = add_query_arg( array( 'cal_year' => $next_year_val ), $base_calendar_url );
 ?>
 
-<style>
-	.acrb-calendar-wrap {
-		display: flex;
-		flex-direction: column;
-		gap: 24px;
-	}
+<div class="acrb-calendar-wrap" style="width: 100%; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
 
-	.acrb-cal-header-bar {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		flex-wrap: wrap;
-		gap: 16px;
-		background: #ffffff;
-		border: 1px solid var(--acrb-border);
-		border-radius: var(--acrb-radius-lg);
-		padding: 20px 24px;
-		box-shadow: var(--acrb-shadow-card);
-	}
+    <!-- Header Bar with Vehicle Selector, Year Selector & Quick Year Navigation -->
+    <div class="acrb-cal-header-bar" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; background: #ffffff; padding: 20px 24px; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);">
+        <div class="acrb-cal-title-area">
+            <h2 style="margin: 0; font-size: 20px; font-weight: 800; color: #0f172a;"><?php esc_html_e( 'Fleet Availability Full Year Matrix', 'awesome-car-rental' ); ?></h2>
+            <p style="margin: 4px 0 0; color: #64748b; font-size: 13px;"><?php printf( esc_html__( 'Displaying all 12 months for year %d with live reservation tracking.', 'awesome-car-rental' ), $current_year ); ?></p>
+        </div>
 
-	.acrb-cal-title-area h2 {
-		margin: 0;
-		font-size: 20px;
-		font-weight: 800;
-		font-family: 'Plus Jakarta Sans', sans-serif;
-		color: var(--acrb-text-main);
-	}
+        <!-- Filter Form containing both Car & Year Selectors -->
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <form method="get" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                <input type="hidden" name="page" value="awesome_car_rental">
+                <input type="hidden" name="tab" value="calendar">
+                
+                <!-- Vehicle Selector Dropdown -->
+                <select name="car_id" onchange="this.form.submit()" style="height: 38px; font-size: 13px; min-width: 180px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 12px; background: #fff; cursor: pointer;">
+                    <option value="0"><?php esc_html_e( '🚗 All Fleet Vehicles', 'awesome-car-rental' ); ?></option>
+                    <?php if ( ! empty( $cars ) ) : ?>
+                        <?php foreach ( $cars as $c ) : ?>
+                            <option value="<?php echo absint( $c['id'] ); ?>" <?php selected( $selected_car, $c['id'] ); ?>>
+                                <?php echo esc_html( $c['name'] . ( ! empty( $c['brand'] ) ? ' (' . $c['brand'] . ')' : '' ) ); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </select>
 
-	.acrb-cal-title-area p {
-		margin: 4px 0 0 0;
-		font-size: 13px;
-		color: var(--acrb-text-muted);
-	}
+                <!-- Year Selector Dropdown -->
+                <select name="cal_year" onchange="this.form.submit()" style="height: 38px; font-size: 13px; width: 100px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; background: #fff; cursor: pointer;">
+                    <?php for ( $y = (int) gmdate( 'Y' ) - 2; $y <= (int) gmdate( 'Y' ) + 5; $y++ ) : ?>
+                        <option value="<?php echo absint( $y ); ?>" <?php selected( $current_year, $y ); ?>>
+                            <?php echo absint( $y ); ?>
+                        </option>
+                    <?php endfor; ?>
+                </select>
+            </form>
 
-	.acrb-cal-nav-controls {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-	}
+            <!-- Year Jump Buttons -->
+            <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 3px;">
+                <a href="<?php echo esc_url( $prev_year_url ); ?>" style="padding: 5px 10px; text-decoration: none; color: #334155; font-weight: bold; font-size: 12px;" title="Previous Year">‹ <?php echo absint( $prev_year_val ); ?></a>
+                <span style="font-weight: 800; padding: 0 8px; color: #0f172a; font-size: 13px;"><?php echo absint( $current_year ); ?></span>
+                <a href="<?php echo esc_url( $next_year_url ); ?>" style="padding: 5px 10px; text-decoration: none; color: #334155; font-weight: bold; font-size: 12px;" title="Next Year"><?php echo absint( $next_year_val ); ?> ›</a>
+            </div>
+        </div>
+    </div>
 
-	.acrb-cal-btn {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		height: 38px;
-		padding: 0 14px;
-		background: #ffffff;
-		border: 1px solid var(--acrb-border);
-		border-radius: var(--acrb-radius-md);
-		color: var(--acrb-text-main);
-		font-size: 13px;
-		font-weight: 700;
-		text-decoration: none;
-		transition: all 0.2s ease;
-	}
+    <!-- 12-Month Grid Container -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+        <?php 
+        for ( $m = 1; $m <= 12; $m++ ) :
+            $month_name    = gmdate( 'F', mktime( 0, 0, 0, $m, 1, $current_year ) );
+            $days_in_m     = (int) cal_days_in_month( CAL_GREGORIAN, $m, $current_year );
+            $first_day_w   = (int) gmdate( 'N', strtotime( sprintf( '%04d-%02d-01', $current_year, $m ) ) );
+        ?>
+            <div class="acrb-card" style="padding: 18px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05);">
+                <!-- Month Card Header -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                    <h3 style="margin: 0; font-size: 14.5px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+                        <span class="dashicons dashicons-calendar-alt" style="color: #4f46e5; font-size: 16px;"></span>
+                        <?php echo esc_html( $month_name ); ?>
+                    </h3>
+                    <span style="font-size: 11px; font-weight: 700; color: #64748b; background: #f8fafc; padding: 2px 8px; border-radius: 6px; border: 1px solid #e2e8f0;"><?php echo absint( $current_year ); ?></span>
+                </div>
 
-	.acrb-cal-btn:hover {
-		background: var(--acrb-bg);
-		border-color: var(--acrb-primary);
-		color: var(--acrb-primary);
-	}
+                <!-- Month Grid -->
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center;">
+                    <?php 
+                    $days_short = array( 'M', 'T', 'W', 'T', 'F', 'S', 'S' );
+                    foreach ( $days_short as $ds ) : 
+                    ?>
+                        <div style="font-size: 10px; font-weight: 700; color: #94a3b8; padding-bottom: 4px;"><?php echo esc_html( $ds ); ?></div>
+                    <?php endforeach; ?>
 
-	.acrb-cal-grid-card {
-		background: #ffffff;
-		border: 1px solid var(--acrb-border);
-		border-radius: var(--acrb-radius-lg);
-		padding: 24px;
-		box-shadow: var(--acrb-shadow-card);
-		overflow-x: auto;
-	}
+                    <?php 
+                    for ( $i = 1; $i < $first_day_w; $i++ ) {
+                        echo '<div></div>';
+                    }
 
-	.acrb-timeline-table {
-		width: 100%;
-		border-collapse: collapse;
-		min-width: 1100px;
-	}
+                    for ( $d = 1; $d <= $days_in_m; $d++ ) :
+                        $date_check_full = sprintf( '%04d-%02d-%02d', $current_year, $m, $d );
+                        $d_timestamp     = strtotime( $date_check_full );
+                        
+                        // Check if day is booked
+                        $is_day_booked = false;
+                        if ( ! empty( $bookings ) ) {
+                            foreach ( $bookings as $b ) {
+                                $p_t = strtotime( (string) $b['pickup_date'] );
+                                $r_t = strtotime( (string) $b['return_date'] );
+                                if ( $d_timestamp >= $p_t && $d_timestamp <= $r_t ) {
+                                    if ( 0 === $selected_car || (int) $b['car_id'] === $selected_car ) {
+                                        $is_day_booked = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
 
-	.acrb-timeline-table th,
-	.acrb-timeline-table td {
-		border: 1px solid var(--acrb-border);
-		padding: 8px 4px;
-		text-align: center;
-		font-size: 12px;
-	}
+                        // Colors: Indigo for Booked, Soft Green for Available
+                        if ( $is_day_booked ) {
+                            $cell_bg    = '#4f46e5';
+                            $cell_color = '#ffffff';
+                            $cell_title = sprintf( __( 'Booked Day: %s', 'awesome-car-rental' ), $date_check_full );
+                        } else {
+                            $cell_bg    = '#ecfdf5';
+                            $cell_color = '#059669';
+                            $cell_title = sprintf( __( 'Available Day: %s', 'awesome-car-rental' ), $date_check_full );
+                        }
+                    ?>
+                        <div title="<?php echo esc_attr( $cell_title ); ?>" style="font-size: 11px; font-weight: 700; color: <?php echo esc_attr( $cell_color ); ?>; background: <?php echo esc_attr( $cell_bg ); ?>; border-radius: 5px; padding: 6px 0; border: 1px solid rgba(0,0,0,0.03);">
+                            <?php echo absint( $d ); ?>
+                        </div>
+                    <?php endfor; ?>
+                </div>
+            </div>
+        <?php endfor; ?>
+    </div>
 
-	.acrb-timeline-table th {
-		background: var(--acrb-bg);
-		color: var(--acrb-text-muted);
-		font-weight: 700;
-	}
-
-	.acrb-timeline-table th.vehicle-col-header {
-		text-align: left;
-		padding-left: 14px;
-		width: 220px;
-		min-width: 220px;
-	}
-
-	.acrb-timeline-table td.vehicle-cell {
-		text-align: left;
-		padding-left: 14px;
-		font-weight: 700;
-		color: var(--acrb-text-main);
-		background: #fafafa;
-	}
-
-	.acrb-timeline-table td.day-cell {
-		height: 44px;
-		position: relative;
-		transition: background 0.1s ease;
-	}
-
-	.acrb-timeline-table td.day-cell:hover {
-		background: #f8fafc;
-	}
-
-	.acrb-timeline-table td.day-cell.is-weekend {
-		background: #f8fafc;
-	}
-
-	/* Booking Bar / Pill */
-	.acrb-booking-pill {
-		position: absolute;
-		top: 6px;
-		bottom: 6px;
-		left: 1px;
-		right: 1px;
-		background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
-		border-radius: 6px;
-		color: #ffffff;
-		font-size: 11px;
-		font-weight: 700;
-		display: flex;
-		align-items: center;
-		padding: 0 8px;
-		overflow: hidden;
-		white-space: nowrap;
-		text-overflow: ellipsis;
-		box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
-		z-index: 5;
-		text-decoration: none;
-	}
-
-	.acrb-booking-pill:hover {
-		opacity: 0.95;
-		color: #ffffff;
-	}
-
-	.acrb-cal-legend {
-		display: flex;
-		align-items: center;
-		gap: 20px;
-		font-size: 12px;
-		font-weight: 600;
-		color: var(--acrb-text-muted);
-		margin-top: 14px;
-	}
-
-	.acrb-legend-item {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-	}
-
-	.acrb-legend-box {
-		width: 14px;
-		height: 14px;
-		border-radius: 4px;
-	}
-</style>
-
-<div class="acrb-calendar-wrap">
-
-	<!-- Header Bar -->
-	<div class="acrb-cal-header-bar">
-		<div class="acrb-cal-title-area">
-			<h2><?php esc_html_e( 'Fleet Availability Calendar', 'awesome-car-rental' ); ?></h2>
-			<p><?php esc_html_e( 'Interactive timeline showing vehicle bookings and reservation windows.', 'awesome-car-rental' ); ?></p>
-		</div>
-		<div class="acrb-cal-nav-controls">
-			<a href="<?php echo esc_url( $prev_url ); ?>" class="acrb-cal-btn">
-				<span class="dashicons dashicons-arrow-left-alt2" style="font-size:16px; width:16px; height:16px;"></span>
-				<?php esc_html_e( 'Previous', 'awesome-car-rental' ); ?>
-			</a>
-			<span style="font-size: 15px; font-weight: 800; padding: 0 8px; font-family: 'Plus Jakarta Sans', sans-serif;">
-				<?php echo esc_html( $current_month_name ); ?>
-			</span>
-			<a href="<?php echo esc_url( $next_url ); ?>" class="acrb-cal-btn">
-				<?php esc_html_e( 'Next', 'awesome-car-rental' ); ?>
-				<span class="dashicons dashicons-arrow-right-alt2" style="font-size:16px; width:16px; height:16px;"></span>
-			</a>
-		</div>
-	</div>
-
-	<!-- Timeline Matrix Card -->
-	<div class="acrb-cal-grid-card">
-		<?php if ( empty( $cars ) ) : ?>
-			<div style="text-align: center; padding: 40px; color: var(--acrb-text-muted);">
-				<?php esc_html_e( 'No vehicles registered in the fleet yet.', 'awesome-car-rental' ); ?>
-			</div>
-		<?php else : ?>
-			<table class="acrb-timeline-table">
-				<thead>
-					<tr>
-						<th class="vehicle-col-header"><?php esc_html_e( 'Vehicle Asset', 'awesome-car-rental' ); ?></th>
-						<?php for ( $day = 1; $day <= $days_in_month; $day++ ) :
-							$date_check = sprintf( '\%04d-\%02d-\%02d',$current_year, $current_month,$day );
-							$day_of_week = (int) gmdate( 'N', strtotime($date_check ) );
-							$is_wknd = ($day_of_week >= 6 );
-							?>
-							<th style="<?php echo $is_wknd ? 'background:#f1f5f9;' : ''; ?>">
-								<?php echo esc_html( (string) $day ); ?><br>
-								<span style="font-size: 9px; opacity: 0.7;"><?php echo esc_html( gmdate( 'D', strtotime( $date_check ) ) ); ?></span>
-							</th>
-						<?php endfor; ?>
-					</tr>
-				</thead>
-				<tbody>
-					<?php foreach ( $cars as $car ) :$car_id   = absint( $car['id'] );$car_name = (string) ( $car['name'] ?? __( 'Vehicle', 'awesome-car-rental' ) );$car_bks  = $bookings_map[$car_id ] ?? array();
-						?>
-						<tr>
-							<td class="vehicle-cell">
-								<div style="font-weight: 700; font-size: 13px;"><?php echo esc_html( $car_name ); ?></div>
-								<div style="font-size: 10px; color: var(--acrb-text-muted); font-weight: 500;"><?php echo esc_html( (string) ( $car['brand'] ?? '' ) ); ?></div>
-							</td>
-							<?php for ( $day = 1; $day <= $days_in_month; $day++ ) :
-								$date_check = sprintf( '\%04d-\%02d-\%02d',$current_year, $current_month,$day );
-								$day_timestamp = strtotime($date_check );
-								$day_of_week = (int) gmdate( 'N',$day_timestamp );
-								$is_wknd = ($day_of_week >= 6 );
-
-								// Check if any booking covers this exact day.
-								$active_booking = null;
-								foreach ( $car_bks as$b ) {
-									$p_time = strtotime( (string)$b['pickup_date'] );
-									$r_time = strtotime( (string)$b['return_date'] );
-									if ( $day_timestamp >=$p_time && $day_timestamp <=$r_time ) {
-										$active_booking =$b;
-										break;
-									}
-								}
-								?>
-								<td class="day-cell <?php echo $is_wknd ? 'is-weekend' : ''; ?>">
-									<?php if ( $active_booking ) :$b_code = esc_html( (string) ( $active_booking['booking_code'] ?? $active_booking['id'] ) );
-										$c_name = esc_html( (string) ($active_booking['customer_name'] ?? 'Client' ) );
-										$b_url  = admin_url( 'admin.php?page=awesome_car_rental&tab=bookings&action=view&booking_id=' . absint( $active_booking['id'] ) );
-										
-										// Render pill only on start date or first day of table
-										$is_start = ( $date_check ===$active_booking['pickup_date'] );
-										if ( $is_start ) :
-											$p_time = strtotime( (string)$active_booking['pickup_date'] );
-											$r_time = strtotime( (string)$active_booking['return_date'] );
-											$month_end_ts = strtotime( sprintf( '\%04d-\%02d-\%02d',$current_year, $current_month,$days_in_month ) );
-											$month_start_ts = strtotime( sprintf( '\%04d-\%02d-01',$current_year, $current_month ) );$span_start = max( $p_time,$month_start_ts );
-											$span_end   = min($r_time, $month_end_ts );$span_days  = max( 1, (int) round( ( $span_end -$span_start ) / 86400 ) + 1 );
-											?>
-											<a href="<?php echo esc_url( $b_url ); ?>" class="acrb-booking-pill" style="width: calc(<?php echo esc_attr( (string) $span_days ); ?> * 100\% + <?php echo esc_attr( (string) ( ($span_days - 1 ) * 9 ) ); ?>px);" title="<?php echo esc_attr( $c_name . ' (#' . $b_code . ')' ); ?>">
-												<span><?php echo esc_html( $c_name ); ?></span>
-											</a>
-										<?php endif; ?>
-									<?php endif; ?>
-								</td>
-							<?php endfor; ?>
-						</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
-		<?php endif; ?>
-	</div>
-
-	<!-- Legend -->
-	<div class="acrb-cal-legend">
-		<div class="acrb-legend-item">
-			<div class="acrb-legend-box" style="background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);"></div>
-			<span><?php esc_html_e( 'Confirmed / Active Reservation', 'awesome-car-rental' ); ?></span>
-		</div>
-		<div class="acrb-legend-item">
-			<div class="acrb-legend-box" style="background: #f1f5f9; border: 1px solid var(--acrb-border);"></div>
-			<span><?php esc_html_e( 'Available Slot', 'awesome-car-rental' ); ?></span>
-		</div>
-	</div>
+    <!-- Legend Bar -->
+    <div class="acrb-cal-legend" style="display: flex; gap: 24px; align-items: center; margin-top: 24px; background: #ffffff; padding: 14px 20px; border-radius: 8px; border: 1px solid #e2e8f0; width: fit-content;">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #475569;">
+            <div style="width: 18px; height: 18px; background: #4f46e5; border-radius: 4px;"></div>
+            <span><?php esc_html_e( 'Booked / Reserved Day', 'awesome-car-rental' ); ?></span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #475569;">
+            <div style="width: 18px; height: 18px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #059669; font-size: 11px;">✓</div>
+            <span><?php esc_html_e( 'Available Slot', 'awesome-car-rental' ); ?></span>
+        </div>
+    </div>
 
 </div>

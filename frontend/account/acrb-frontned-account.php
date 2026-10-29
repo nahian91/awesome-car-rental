@@ -1,9 +1,16 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) exit; 
 /**
  * [acrb_account]
- * Premium SaaS Dashboard - Dynamic Currency & Translation Ready
+ * Ultra-Modern Elite SaaS Account Dashboard with Dynamic Currency & Translation Ready
+ *
+ * @package Awesome_Car_Rental
+ * @since   1.8.3
  */
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
 add_shortcode('acrb_account', function() {
     // 1. SECURITY & AUTHENTICATION
     if (!is_user_logged_in()) {
@@ -269,18 +276,18 @@ add_shortcode('acrb_account', function() {
 
     <style>
         /* Modern SaaS Account Wrapper */
-        .acrb-acc-wrapper { display: flex; gap: 32px; margin: 30px auto; max-width: 1200px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1e293b; box-sizing: border-box; }
+        .acrb-acc-wrapper { display: flex; gap: 32px; margin: 30px auto; max-width: 1280px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1e293b; box-sizing: border-box; }
         .acrb-acc-wrapper *, .acrb-acc-wrapper *::before, .acrb-acc-wrapper *::after { box-sizing: border-box; }
 
         /* Sidebar Navigation */
         .acrb-acc-nav { width: 280px; flex-shrink: 0; }
-        .acrb-nav-user { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; padding: 20px; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.01); }
+        .acrb-nav-user { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; padding: 20px; background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); }
         .acrb-nav-avatar img { border-radius: 50%; object-fit: cover; }
         .acrb-nav-info strong { display: block; color: #0f172a; font-size: 15px; font-weight: 700; }
-        .acrb-nav-info span { font-size: 11px; color: #3b82f6; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .acrb-nav-info span { font-size: 11px; color: #3b82f6; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
 
-        #acrb-nav-list { list-style: none; padding: 0; margin: 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.01); }
-        #acrb-nav-list li a { display: flex; align-items: center; gap: 12px; padding: 14px 20px; text-decoration: none; color: #475569; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; border-left: 3px solid transparent; }
+        #acrb-nav-list { list-style: none; padding: 0; margin: 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); }
+        #acrb-nav-list li a { display: flex; align-items: center; gap: 12px; padding: 15px 22px; text-decoration: none; color: #475569; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; border-left: 3px solid transparent; }
         #acrb-nav-list li.active a { background: #eff6ff; color: #2563eb; border-left-color: #3b82f6; }
         #acrb-nav-list li a:hover:not(.active) { background: #f8fafc; color: #0f172a; }
         .acrb-nav-logout a { color: #b91c1c !important; border-top: 1px solid #f1f5f9; }
@@ -289,101 +296,106 @@ add_shortcode('acrb_account', function() {
         /* Main Content Area */
         .acrb-acc-content { flex: 1; min-width: 0; }
         
-        .acrb-dash-header { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.01); }
+        .acrb-dash-header { background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 28px; margin-bottom: 28px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); }
         .acrb-dash-header h2 { margin: 0 0 6px 0; font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; }
         .acrb-dash-header p { margin: 0; color: #64748b; font-size: 14px; }
 
-        .acrb-stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 24px; }
-        .acrb-stat-card { background: #fff; border: 1px solid #e2e8f0; padding: 24px; border-radius: 14px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.01); display: flex; flex-direction: column; align-items: center; gap: 8px; }
-        .acrb-stat-icon { width: 42px; height: 42px; background: #eff6ff; color: #3b82f6; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .acrb-stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 28px; }
+        .acrb-stat-card { background: #fff; border: 1px solid #e2e8f0; padding: 24px; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .acrb-stat-icon { width: 44px; height: 44px; background: #eff6ff; color: #3b82f6; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
         .acrb-stat-val { font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; }
-        .acrb-stat-label { font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .acrb-stat-label { font-size: 12px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
 
-        .acrb-promo-banner { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; border-radius: 14px; padding: 28px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 20px rgba(59, 130, 246, 0.25); }
+        .acrb-promo-banner { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; border-radius: 20px; padding: 28px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.3); }
         .acrb-promo-content h3 { margin: 0 0 6px 0; font-size: 18px; font-weight: 700; color: #fff; }
         .acrb-promo-content p { margin: 0; font-size: 14px; opacity: 0.9; }
-        .acrb-btn-white { background: #fff; color: #2563eb; text-decoration: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 13px; transition: all 0.2s ease; box-shadow: 0 2px 6px rgba(0,0,0,0.1); display: inline-flex; align-items: center; }
+        .acrb-btn-white { background: #fff; color: #2563eb; text-decoration: none; padding: 11px 22px; border-radius: 10px; font-weight: 700; font-size: 13px; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: inline-flex; align-items: center; }
         .acrb-btn-white:hover { background: #f8fafc; transform: translateY(-1px); }
 
         /* Rental History Panel */
         .acrb-panel-title { font-size: 18px; font-weight: 700; color: #0f172a; margin: 0 0 20px 0; letter-spacing: -0.3px; }
         
-        .acrb-booking-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; margin-bottom: 16px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.01); transition: all 0.2s ease; }
-        .acrb-booking-card:hover { border-color: #cbd5e1; box-shadow: 0 6px 16px rgba(0,0,0,0.04); }
+        .acrb-booking-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; margin-bottom: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); transition: all 0.3s ease; }
+        .acrb-booking-card:hover { border-color: #cbd5e1; box-shadow: 0 15px 30px -10px rgba(15, 23, 42, 0.08); }
         
-        .acrb-card-main { display: flex; gap: 18px; padding: 20px; align-items: center; }
-        .acrb-car-icon { background: #eff6ff; color: #3b82f6; width: 48px; height: 48px; min-width: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .acrb-card-main { display: flex; gap: 20px; padding: 24px; align-items: center; }
+        .acrb-car-icon { background: #eff6ff; color: #3b82f6; width: 50px; height: 50px; min-width: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
         .acrb-booking-details { flex: 1; }
-        .acrb-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-        .acrb-car-name { margin: 0; font-size: 16px; font-weight: 700; color: #0f172a; }
+        .acrb-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .acrb-car-name { margin: 0; font-size: 17px; font-weight: 800; color: #0f172a; }
         
-        .acrb-status-pill { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .acrb-status-pill { font-size: 11px; padding: 4px 12px; border-radius: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
         .status-completed, .status-confirmed { background: #dcfce7; color: #15803d; }
         .status-pending { background: #fef3c7; color: #d97706; }
         
-        .acrb-card-meta { display: flex; gap: 16px; font-size: 13px; color: #64748b; }
-        .acrb-meta-item { display: inline-flex; align-items: center; gap: 4px; }
-        .acrb-meta-item .dashicons { font-size: 15px; width: 15px; height: 15px; color: #94a3b8; }
+        .acrb-card-meta { display: flex; gap: 18px; font-size: 13px; color: #64748b; font-weight: 500; }
+        .acrb-meta-item { display: inline-flex; align-items: center; gap: 6px; }
+        .acrb-meta-item .dashicons { font-size: 16px; width: 16px; height: 16px; color: #94a3b8; }
 
-        .acrb-card-footer { background: #f8fafc; padding: 14px 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .acrb-card-footer { background: #f8fafc; padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
         .acrb-price-box { display: flex; flex-direction: column; }
-        .acrb-price-label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .acrb-price-amount { font-weight: 800; color: #0f172a; font-size: 18px; letter-spacing: -0.5px; }
+        .acrb-price-label { font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; }
+        .acrb-price-amount { font-weight: 900; color: #0f172a; font-size: 20px; letter-spacing: -0.5px; }
 
-        .acrb-btn-outline { background: #fff; color: #334155; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.01); }
+        .acrb-btn-outline { background: #fff; color: #334155; border: 1px solid #cbd5e1; padding: 9px 18px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.01); }
         .acrb-btn-outline:hover { background: #f1f5f9; color: #0f172a; border-color: #94a3b8; }
         .acrb-btn-outline .dashicons { font-size: 15px; width: 15px; height: 15px; color: #64748b; }
 
         /* Profile & Security Forms */
-        .acrb-settings-form { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 28px; box-shadow: 0 2px 4px rgba(0,0,0,0.01); }
-        .acrb-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .acrb-form-group { margin-bottom: 20px; }
-        .acrb-form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #334155; }
-        .acrb-input, .acrb-textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 14px; font-size: 14px; color: #1e293b; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.01); transition: all 0.2s ease; }
-        .acrb-input { height: 42px; }
-        .acrb-textarea { padding: 12px 14px; height: auto; resize: vertical; }
+        .acrb-settings-form { background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 32px; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); }
+        .acrb-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .acrb-form-group { margin-bottom: 22px; }
+        .acrb-form-group label { display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #334155; }
+        .acrb-input, .acrb-textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 16px; font-size: 14px; color: #1e293b; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.01); transition: all 0.2s ease; }
+        .acrb-input { height: 44px; }
+        .acrb-textarea { padding: 14px 16px; height: auto; resize: vertical; }
         .acrb-input:hover, .acrb-textarea:hover { border-color: #94a3b8; }
-        .acrb-input:focus, .acrb-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); outline: none; }
+        .acrb-input:focus, .acrb-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12); outline: none; }
         .acrb-readonly { background: #f8fafc; color: #64748b; cursor: not-allowed; }
         
-        .acrb-btn-submit { background: #3b82f6; color: #fff; border: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35); transition: background 0.2s; height: 42px; display: inline-flex; align-items: center; justify-content: center; width: 100%; }
-        .acrb-btn-submit:hover { background: #2563eb; }
+        .acrb-btn-submit { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; border: none; padding: 12px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35); transition: all 0.2s; height: 44px; display: inline-flex; align-items: center; justify-content: center; width: 100%; }
+        .acrb-btn-submit:hover { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
 
         /* Alerts */
-        .acrb-alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; font-weight: 600; }
+        .acrb-alert { padding: 14px 18px; border-radius: 10px; margin-bottom: 24px; font-size: 13px; font-weight: 600; }
         .acrb-alert.success { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
         .acrb-alert.error { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 
         /* Modal */
         .acrb-modal { display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
-        .acrb-modal-content { background: #fff; margin: 8% auto; padding: 32px; border-radius: 16px; width: 420px; position: relative; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
-        .acrb-modal-close { position: absolute; right: 20px; top: 20px; font-size: 24px; cursor: pointer; color: #94a3b8; transition: color 0.2s; }
+        .acrb-modal-content { background: #fff; margin: 8% auto; padding: 36px; border-radius: 20px; width: 440px; position: relative; box-shadow: 0 25px 35px -10px rgba(0,0,0,0.15); border: 1px solid #e2e8f0; }
+        .acrb-modal-close { position: absolute; right: 24px; top: 24px; font-size: 24px; cursor: pointer; color: #94a3b8; transition: color 0.2s; }
         .acrb-modal-close:hover { color: #0f172a; }
         
-        .acrb-receipt-header { text-align: center; margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; }
-        .acrb-receipt-icon { font-size: 32px; margin-bottom: 8px; }
-        .acrb-receipt-header h3 { margin: 0 0 4px 0; font-size: 18px; font-weight: 700; color: #0f172a; }
+        .acrb-receipt-header { text-align: center; margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 20px; }
+        .acrb-receipt-icon { font-size: 36px; margin-bottom: 8px; }
+        .acrb-receipt-header h3 { margin: 0 0 4px 0; font-size: 19px; font-weight: 800; color: #0f172a; }
         
-        .acrb-receipt-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; }
-        .acrb-r-item { display: flex; justify-content: space-between; font-size: 14px; color: #475569; }
+        .acrb-receipt-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+        .acrb-r-item { display: flex; justify-content: space-between; font-size: 14px; color: #475569; font-weight: 500; }
         
-        .acrb-r-total { display: flex; justify-content: space-between; border-top: 2px dashed #e2e8f0; padding-top: 16px; font-weight: 800; font-size: 18px; color: #0f172a; }
-        .acrb-btn-print { width: 100%; margin-top: 20px; height: 44px; background: #0f172a; color: #fff; border-radius: 8px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s; }
+        .acrb-r-total { display: flex; justify-content: space-between; border-top: 2px dashed #e2e8f0; padding-top: 18px; font-weight: 900; font-size: 18px; color: #0f172a; }
+        .acrb-btn-print { width: 100%; margin-top: 24px; height: 44px; background: #0f172a; color: #fff; border-radius: 10px; border: none; font-weight: 700; font-size: 14px; cursor: pointer; transition: background 0.2s; }
         .acrb-btn-print:hover { background: #334155; }
 
-        .acrb-empty-box { padding: 60px 20px; text-align: center; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; color: #64748b; }
+        .acrb-empty-box { padding: 60px 20px; text-align: center; background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; color: #64748b; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); }
         .acrb-empty-box .dashicons { font-size: 48px; width: 48px; height: 48px; color: #cbd5e1; margin-bottom: 12px; }
-        .acrb-empty-box p { margin: 0; font-size: 14px; font-weight: 500; }
+        .acrb-empty-box p { margin: 0; font-size: 14px; font-weight: 600; }
 
-        .acrb-auth-locked { max-width: 440px; margin: 60px auto; padding: 40px; background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+        .acrb-auth-locked { max-width: 440px; margin: 60px auto; padding: 40px; background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; text-align: center; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05); }
         .acrb-auth-locked .dashicons { font-size: 48px; width: 48px; height: 48px; color: #3b82f6; margin-bottom: 16px; }
         .acrb-auth-locked h2 { margin: 0 0 8px 0; font-size: 20px; font-weight: 800; color: #0f172a; }
         .acrb-auth-locked p { color: #64748b; font-size: 14px; margin: 0 0 24px 0; line-height: 1.5; }
-        .acrb-btn { background: #3b82f6; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35); transition: background 0.2s; }
-        .acrb-btn:hover { background: #2563eb; color: #fff; text-decoration: none; }
+        .acrb-btn { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35); transition: all 0.2s; }
+        .acrb-btn:hover { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #fff; text-decoration: none; }
 
         .acrb-tab-panel { display: none; }
         .acrb-tab-panel.active { display: block; animation: acrbFade 0.3s ease; }
+
+        @keyframes acrbFade {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
         @media (max-width: 900px) {
             .acrb-acc-wrapper { flex-direction: column; }

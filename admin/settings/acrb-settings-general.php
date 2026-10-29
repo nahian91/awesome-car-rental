@@ -1,8 +1,13 @@
 <?php
 /**
  * General Settings Tab - SaaS Style Localization & Rules (Modernized)
- * Location: admin/settings-general.php (or included file)
+ * Location: admin/settings/acrb-settings-general.php
+ *
+ * @package Awesome_Car_Rental
+ * @since   1.7.2
  */
+
+declare( strict_types=1 );
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -14,14 +19,14 @@ function acrb_settings_general_view() {
     }
 
     $currencies = array(
-        'USD' => array( 'name' => 'US Dollar',       'symbol' => '$' ),
-        'EUR' => array( 'name' => 'Euro',            'symbol' => '€' ),
-        'GBP' => array( 'name' => 'British Pound',   'symbol' => '£' ),
+        'USD' => array( 'name' => 'US Dollar',        'symbol' => '$' ),
+        'EUR' => array( 'name' => 'Euro',             'symbol' => '€' ),
+        'GBP' => array( 'name' => 'British Pound',    'symbol' => '£' ),
         'BDT' => array( 'name' => 'Bangladeshi Taka', 'symbol' => '৳' ),
-        'INR' => array( 'name' => 'Indian Rupee',    'symbol' => '₹' ),
-        'JPY' => array( 'name' => 'Japanese Yen',    'symbol' => '¥' ),
-        'CAD' => array( 'name' => 'Canadian Dollar', 'symbol' => 'CA$' ),
-        'AED' => array( 'name' => 'UAE Dirham',      'symbol' => 'د.إ' ),
+        'INR' => array( 'name' => 'Indian Rupee',     'symbol' => '₹' ),
+        'JPY' => array( 'name' => 'Japanese Yen',     'symbol' => '¥' ),
+        'CAD' => array( 'name' => 'Canadian Dollar',  'symbol' => 'CA$' ),
+        'AED' => array( 'name' => 'UAE Dirham',       'symbol' => 'د.إ' ),
     );
 
     // Handle Form Submission
@@ -49,12 +54,10 @@ function acrb_settings_general_view() {
 
             // Clear dashboard transient caches
             delete_transient( 'acrb_dashboard_revenue' );
-
-            echo '<div class="notice notice-success is-dismissible" style="margin: 0 0 20px 0;"><p><strong>' . esc_html__( 'Success:', 'awesome-car-rental' ) . '</strong> ' . esc_html__( 'Global configuration updated.', 'awesome-car-rental' ) . '</p></div>';
         }
     }
 
-    // Fetch Values
+    // Fetch Current Saved Values
     $unit      = get_option( 'acrb_rental_unit', 'day' );
     $curr_code = get_option( 'acrb_currency_code', 'GBP' );
     $curr_pos  = get_option( 'acrb_currency_pos', 'left' );
@@ -66,46 +69,12 @@ function acrb_settings_general_view() {
     $weekend   = get_option( 'acrb_weekend_rental', 'yes' );
     ?>
 
-    <style>
-        /* Modern SaaS Layout & Form Theme */
-        .acrb-admin-wrapper { max-width: 1200px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1e293b; margin: 0; box-sizing: border-box; }
-        .acrb-admin-wrapper *, .acrb-admin-wrapper *::before, .acrb-admin-wrapper *::after { box-sizing: border-box; }
-
-        .acrb-admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px; }
-        
-        .acrb-admin-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 28px; box-shadow: 0 2px 4px rgba(0,0,0,0.01); }
-        .acrb-admin-card-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; }
-        .acrb-admin-card-header .dashicons { font-size: 22px; width: 22px; height: 22px; color: #3b82f6; display: inline-flex; align-items: center; justify-content: center; }
-        .acrb-admin-card-title { margin: 0 0 4px 0; font-size: 15px; font-weight: 600; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px; }
-        .acrb-admin-card-subtitle { margin: 0; font-size: 13px; color: #64748b; }
-        
-        .acrb-admin-field-group { margin-bottom: 20px; }
-        .acrb-admin-label { display: block; font-weight: 600; margin-bottom: 8px; color: #334155; font-size: 13px; }
-        .acrb-admin-row { display: flex; gap: 16px; }
-        .acrb-admin-row .acrb-admin-field-group { flex: 1; }
-        
-        .acrb-admin-input, .acrb-admin-select { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 14px; height: 42px; font-size: 14px; color: #1e293b; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.01); transition: all 0.2s ease; }
-        .acrb-admin-input:hover, .acrb-admin-select:hover { border-color: #94a3b8; }
-        .acrb-admin-input:focus, .acrb-admin-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); outline: none; background: #fff; }
-        
-        .acrb-admin-checkbox-wrap { background: #f8fafc; padding: 16px 20px; border-radius: 10px; border: 1px solid #e2e8f0; display: flex; gap: 14px; align-items: center; cursor: pointer; transition: all 0.2s ease; }
-        .acrb-admin-checkbox-wrap:hover { border-color: #cbd5e1; background: #fff; }
-        .acrb-admin-checkbox-wrap input[type="checkbox"] { width: 18px; height: 18px; accent-color: #3b82f6; cursor: pointer; }
-        
-        .acrb-admin-footer { margin-top: 24px; padding: 20px 28px; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; display: flex; justify-content: flex-end; box-shadow: 0 2px 4px rgba(0,0,0,0.01); }
-        .acrb-admin-btn-save { background: #3b82f6; color: #fff; border: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35); transition: background 0.2s; height: 42px; display: inline-flex; align-items: center; justify-content: center; }
-        .acrb-admin-btn-save:hover { background: #2563eb; }
-
-        @media(max-width: 900px) {
-            .acrb-admin-grid { grid-template-columns: 1fr; }
-        }
-    </style>
-
     <div class="acrb-admin-wrapper">
         <form method="post">
             <?php wp_nonce_field( 'acrb_save_general_settings', 'acrb_general_nonce' ); ?>
             
             <div class="acrb-admin-grid">
+                
                 <!-- Localization & Policy Card -->
                 <div class="acrb-admin-card">
                     <div class="acrb-admin-card-header">
@@ -119,54 +88,76 @@ function acrb_settings_general_view() {
                     <div class="acrb-admin-row">
                         <div class="acrb-admin-field-group">
                             <label class="acrb-admin-label"><?php esc_html_e( 'Currency', 'awesome-car-rental' ); ?></label>
-                            <select name="acrb_currency_code" class="acrb-admin-select">
-                                <?php foreach ( $currencies as $code => $data ) : ?>
-                                    <option value="<?php echo esc_attr( $code ); ?>" <?php selected( $curr_code, $code ); ?>>
-                                        <?php echo esc_html( $data['symbol'] . ' - ' . $data['name'] ); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <div class="acrb-select-wrap">
+                                <select name="acrb_currency_code" class="acrb-admin-select">
+                                    <?php foreach ( $currencies as $code => $data ) : ?>
+                                        <option value="<?php echo esc_attr( $code ); ?>" <?php selected( $curr_code, $code ); ?>>
+                                            <?php echo esc_html( $data['symbol'] . ' - ' . $data['name'] ); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <span class="acrb-select-chevron">
+                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                    </svg>
+                                </span>
+                            </div>
                         </div>
+
                         <div class="acrb-admin-field-group">
                             <label class="acrb-admin-label"><?php esc_html_e( 'Symbol Position', 'awesome-car-rental' ); ?></label>
-                            <select name="acrb_currency_pos" class="acrb-admin-select">
-                                <option value="left" <?php selected( $curr_pos, 'left' ); ?>>
-                                    <?php 
-                                    /* translators: %s: Currency symbol, e.g., £ */
-                                    printf( esc_html__( 'Before (%s100)', 'awesome-car-rental' ), '£' ); 
-                                    ?>
-                                </option>
-                                <option value="right" <?php selected( $curr_pos, 'right' ); ?>>
-                                    <?php 
-                                    /* translators: %s: Currency symbol, e.g., £ */
-                                    printf( esc_html__( 'After (100%s)', 'awesome-car-rental' ), '£' ); 
-                                    ?>
-                                </option>
-                            </select>
+                            <div class="acrb-select-wrap">
+                                <select name="acrb_currency_pos" class="acrb-admin-select">
+                                    <option value="left" <?php selected( $curr_pos, 'left' ); ?>>
+                                        <?php 
+                                        /* translators: %s: Currency symbol, e.g., £ */
+                                        printf( esc_html__( 'Before (%s100)', 'awesome-car-rental' ), esc_html( $currencies[ $curr_code ]['symbol'] ?? '£' ) ); 
+                                        ?>
+                                    </option>
+                                    <option value="right" <?php selected( $curr_pos, 'right' ); ?>>
+                                        <?php 
+                                        /* translators: %s: Currency symbol, e.g., £ */
+                                        printf( esc_html__( 'After (100%s)', 'awesome-car-rental' ), esc_html( $currencies[ $curr_code ]['symbol'] ?? '£' ) ); 
+                                        ?>
+                                    </option>
+                                </select>
+                                <span class="acrb-select-chevron">
+                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                    </svg>
+                                </span>
+                            </div>
                         </div>
                     </div>
 
                     <div class="acrb-admin-field-group">
                         <label class="acrb-admin-label"><?php esc_html_e( 'Base Pricing Unit', 'awesome-car-rental' ); ?></label>
-                        <select name="acrb_rental_unit" class="acrb-admin-select">
-                            <option value="day" <?php selected( $unit, 'day' ); ?>><?php esc_html_e( 'Daily (Fixed 24h cycles)', 'awesome-car-rental' ); ?></option>
-                            <option value="hour" <?php selected( $unit, 'hour' ); ?>><?php esc_html_e( 'Hourly (Flexible duration)', 'awesome-car-rental' ); ?></option>
-                        </select>
+                        <div class="acrb-select-wrap">
+                            <select name="acrb_rental_unit" class="acrb-admin-select">
+                                <option value="day" <?php selected( $unit, 'day' ); ?>><?php esc_html_e( 'Daily (Fixed 24h cycles)', 'awesome-car-rental' ); ?></option>
+                                <option value="hour" <?php selected( $unit, 'hour' ); ?>><?php esc_html_e( 'Hourly (Flexible duration)', 'awesome-car-rental' ); ?></option>
+                            </select>
+                            <span class="acrb-select-chevron">
+                                <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </div>
                     </div>
 
                     <div class="acrb-admin-row">
                         <div class="acrb-admin-field-group">
                             <label class="acrb-admin-label">
-                            <?php 
-                            /* translators: %s: Time unit (e.g. Day, Hour). */
-                            printf( esc_html__( 'Min. %ss', 'awesome-car-rental' ), esc_html( ucfirst( $unit ) ) ); 
-                            ?>
+                                <?php 
+                                /* translators: %s: Time unit (e.g. Day, Hour). */
+                                printf( esc_html__( 'Min. %ss', 'awesome-car-rental' ), esc_html( ucfirst( $unit ) ) ); 
+                                ?>
                             </label>
-                            <input type="number" name="acrb_min_rent_days" value="<?php echo esc_attr( $min_days ); ?>" class="acrb-admin-input">
+                            <input type="number" name="acrb_min_rent_days" value="<?php echo esc_attr( (string) $min_days ); ?>" class="acrb-admin-input" min="1">
                         </div>
                         <div class="acrb-admin-field-group">
                             <label class="acrb-admin-label"><?php esc_html_e( 'Min. Driver Age', 'awesome-car-rental' ); ?></label>
-                            <input type="number" name="acrb_min_age" value="<?php echo esc_attr( $min_age ); ?>" class="acrb-admin-input">
+                            <input type="number" name="acrb_min_age" value="<?php echo esc_attr( (string) $min_age ); ?>" class="acrb-admin-input" min="18">
                         </div>
                     </div>
                 </div>
@@ -185,30 +176,32 @@ function acrb_settings_general_view() {
                         <label class="acrb-admin-label"><?php esc_html_e( 'Daily Operation Hours', 'awesome-car-rental' ); ?></label>
                         <div class="acrb-admin-row" style="align-items:center;">
                             <input type="time" name="acrb_pickup_start" value="<?php echo esc_attr( $p_start ); ?>" class="acrb-admin-input">
-                            <span style="color:#64748b; font-weight:500;"><?php esc_html_e( 'to', 'awesome-car-rental' ); ?></span>
+                            <span style="color:#64748b; font-weight:600; font-size:13px;"><?php esc_html_e( 'to', 'awesome-car-rental' ); ?></span>
                             <input type="time" name="acrb_pickup_end" value="<?php echo esc_attr( $p_end ); ?>" class="acrb-admin-input">
                         </div>
                     </div>
 
                     <div class="acrb-admin-field-group">
                         <label class="acrb-admin-label"><?php esc_html_e( 'Preparation Buffer (Hours)', 'awesome-car-rental' ); ?></label>
-                        <input type="number" name="acrb_buffer_time" value="<?php echo esc_attr( $buffer ); ?>" class="acrb-admin-input">
-                        <p class="description" style="margin-top:6px; font-size:12px; color:#64748b;"><?php esc_html_e( 'Rest period between bookings.', 'awesome-car-rental' ); ?></p>
+                        <input type="number" name="acrb_buffer_time" value="<?php echo esc_attr( (string) $buffer ); ?>" class="acrb-admin-input" min="0">
+                        <p class="description" style="margin-top:6px; font-size:12px; color:#64748b;"><?php esc_html_e( 'Buffer period required between consecutive bookings for cleaning and maintenance.', 'awesome-car-rental' ); ?></p>
                     </div>
 
                     <label class="acrb-admin-checkbox-wrap">
                         <input type="checkbox" name="acrb_weekend_rental" value="yes" <?php checked( $weekend, 'yes' ); ?>> 
                         <div>
-                            <span class="acrb-admin-label" style="margin:0;"><?php esc_html_e( 'Enable Weekend Operations', 'awesome-car-rental' ); ?></span>
-                            <span style="display:block; font-size:12px; color:#64748b; margin-top:2px;"><?php esc_html_e( 'Allow pickups on Sat/Sun.', 'awesome-car-rental' ); ?></span>
+                            <span class="acrb-admin-label" style="margin:0; font-size:13.5px;"><?php esc_html_e( 'Enable Weekend Operations', 'awesome-car-rental' ); ?></span>
+                            <span style="display:block; font-size:12px; color:#64748b; margin-top:2px;"><?php esc_html_e( 'Allow customer pickups and return operations on Saturday and Sunday.', 'awesome-car-rental' ); ?></span>
                         </div>
                     </label>
                 </div>
+
             </div>
 
             <div class="acrb-admin-footer">
                 <button type="submit" name="acrb_save_general" class="acrb-admin-btn-save">
-                    <?php esc_html_e( 'Save Changes', 'awesome-car-rental' ); ?>
+                    <span class="dashicons dashicons-saved" style="font-size:17px; width:17px; height:17px;"></span>
+                    <span><?php esc_html_e( 'Save Changes', 'awesome-car-rental' ); ?></span>
                 </button>
             </div>
         </form>
